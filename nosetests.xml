@@ -1,0 +1,563 @@
+<?xml version="1.0" encoding="UTF-8"?><testsuite name="nosetests" tests="207" errors="0" failures="0" skip="1"><testcase classname="gbp.command_wrappers.Command" name="__call__" time="0.015"></testcase><testcase classname="gbp.command_wrappers.Command" name="call" time="0.018"></testcase><testcase classname="gbp.config.GbpOptionParser" name="get_config_files" time="0.003"></testcase><testcase classname="gbp.deb.format" name="DebianSourceFormat" time="0.002"></testcase><testcase classname="gbp.deb.format.DebianSourceFormat" name="parse_file" time="0.003"></testcase><testcase classname="gbp.deb.git.DebianGitRepository" name="_build_legacy_tag" time="0.001"></testcase><testcase classname="gbp.deb.git.DebianGitRepository" name="_sanitize_version" time="0.001"></testcase><testcase classname="gbp.deb.git.DebianGitRepository" name="tag_to_version" time="0.002"></testcase><testcase classname="gbp.deb.git.DebianGitRepository" name="version_to_tag" time="0.001"></testcase><testcase classname="gbp.deb.policy" name="DebianPkgPolicy" time="0.001"></testcase><testcase classname="gbp.deb.policy.DebianPkgPolicy" name="build_tarball_name" time="0.001"></testcase><testcase classname="gbp.deb.uscan.Uscan" name="_parse" time="0.004"></testcase><testcase classname="gbp.deb.uscan.Uscan" name="_parse_uptodate" time="0.001"></testcase><testcase classname="gbp.deb.uscan.Uscan" name="_raise_error" time="0.003"></testcase><testcase classname="gbp.deb" name="orig_file" time="0.001"></testcase><testcase classname="gbp.git.args" name="GitArgs" time="0.002"></testcase><testcase classname="gbp.git.commit.GitCommit" name="is_sha1" time="0.001"></testcase><testcase classname="gbp.git.modifier.GitModifier" name="get_author_env" time="0.001"></testcase><testcase classname="gbp.git.modifier.GitModifier" name="get_committer_env" time="0.001"></testcase><testcase classname="gbp.git.repository.GitRepository" name="strip_sha1" time="0.002"></testcase><testcase classname="gbp.git" name="rfc822_date_to_git" time="0.003"></testcase><testcase classname="gbp.patch_series.Patch" name="_get_subject_from_filename" time="0.001"></testcase><testcase classname="gbp.patch_series.PatchSeries" name="_get_topic" time="0.001"></testcase><testcase classname="gbp.patch_series.PatchSeries" name="_parse_line" time="0.002"></testcase><testcase classname="gbp.patch_series.PatchSeries" name="_read_series" time="0.001"></testcase><testcase classname="gbp.patch_series.PatchSeries" name="_split_strip" time="0.001"></testcase><testcase classname="gbp.pkg.PkgPolicy" name="get_compression" time="0.001"></testcase><testcase classname="gbp.pkg.PkgPolicy" name="is_valid_packagename" time="0.001"></testcase><testcase classname="gbp.pkg.PkgPolicy" name="is_valid_upstreamversion" time="0.001"></testcase><testcase classname="gbp.pkg.UpstreamSource" name="guess_version" time="0.007"></testcase><testcase classname="gbp.scripts.buildpackage" name="changes_file_suffix" time="0.012"></testcase><testcase classname="gbp.scripts.common.buildpackage" name="sanitize_prefix" time="0.002"></testcase><testcase classname="gbp.scripts.common.pq" name="is_pq_branch" time="0.001"></testcase><testcase classname="gbp.scripts.common.pq" name="pq_branch_base" time="0.001"></testcase><testcase classname="gbp.scripts.common.pq" name="pq_branch_name" time="0.001"></testcase><testcase classname="gbp.scripts.create_remote_repo" name="build_cmd" time="0.001"></testcase><testcase classname="gbp.scripts.create_remote_repo" name="build_remote_script" time="0.001"></testcase><testcase classname="gbp.scripts.create_remote_repo" name="parse_url" time="0.005"></testcase><testcase classname="gbp.scripts.create_remote_repo" name="print_config" time="0.001"></testcase><testcase classname="gbp.scripts.dch" name="snapshot_version" time="0.001"></testcase><testcase classname="gbp.tristate.Tristate" name="__repr__" time="0.001"></testcase><testcase classname="&lt;nose.suite.ContextSuite context=tests.component" name="deb&gt;:setup" time="0.439"><skipped type="unittest.case.SkipTest" message="Skipping 'tests.component', testdata directory not initialized. Consider doing 'git submodule update'&#10;-------------------- &gt;&gt; begin captured logging &lt;&lt; --------------------&#10;gbp: info: Failed to read OS release file /etc/lsb-release: [Errno 2] No such file or directory: '/etc/lsb-release'&#10;gbp: debug: ['git', 'rev-parse', '--show-cdup']&#10;gbp: debug: ['git', 'rev-parse', '--is-bare-repository']&#10;gbp: debug: ['git', 'submodule', 'status']&#10;--------------------- &gt;&gt; end captured logging &lt;&lt; ---------------------"><![CDATA[  File "/usr/lib/python2.7/dist-packages/nose/suite.py", line 208, in run
+    self.setUp()
+  File "/usr/lib/python2.7/dist-packages/nose/suite.py", line 291, in setUp
+    self.setupContext(ancestor)
+  File "/usr/lib/python2.7/dist-packages/nose/suite.py", line 314, in setupContext
+    try_run(context, names)
+  File "/usr/lib/python2.7/dist-packages/nose/util.py", line 469, in try_run
+    return func()
+  File "/var/scratch/src/git-buildpackage/git-buildpackage/tests/component/deb/__init__.py", line 29, in setup
+    ComponentTestGitRepository.check_testdata(DEB_TEST_SUBMODULE)
+  File "/var/scratch/src/git-buildpackage/git-buildpackage/tests/component/__init__.py", line 75, in check_testdata
+    "Consider doing 'git submodule update'" % __name__)
+Skipping 'tests.component', testdata directory not initialized. Consider doing 'git submodule update'
+-------------------- >> begin captured logging << --------------------
+gbp: info: Failed to read OS release file /etc/lsb-release: [Errno 2] No such file or directory: '/etc/lsb-release'
+gbp: debug: ['git', 'rev-parse', '--show-cdup']
+gbp: debug: ['git', 'rev-parse', '--is-bare-repository']
+gbp: debug: ['git', 'submodule', 'status']
+--------------------- >> end captured logging << ---------------------]]></skipped></testcase><testcase classname="tests.01_test_help.TestHelp" name="testHelp" time="0.087"><system-out><![CDATA[Usage: setup.py [options]
+
+Options:
+  --version             show program's version number and exit
+  -h, --help            show this help message and exit
+  --git-ignore-new      Build with uncommited changes in the source tree,
+                        default is 'False'
+  --git-no-ignore-new   negates '--git-ignore-new'
+  --git-verbose         verbose command execution
+  --git-color=COLOR     Whether to use colored output, default is 'auto'
+  --git-color-scheme=COLOR_SCHEME
+                        Colors to use in output (when color is enabled),
+                        format is '<debug>:<info>:<warning>:<error>', e.g.
+                        'cyan:34::'. Numerical values and color names are
+                        accepted, empty fields indicate using the default.
+  --git-notify=NOTIFY   Whether to send a desktop notification after the
+                        build, default is 'auto'
+
+  tag options:
+    options related to git tag creation
+
+    --git-tag           create a tag after a successful build
+    --git-tag-only      don't build, only tag and run the posttag hook
+    --git-retag         don't fail if the tag already exists
+    --git-sign-tags     Whether to sign tags, default is 'True'
+    --git-no-sign-tags  negates '--git-sign-tags'
+    --git-keyid=KEYID   GPG keyid to sign tags with, default is '0x3f3e6426'
+    --git-debian-tag=DEBIAN_TAG
+                        Format string for debian tags, default is
+                        'debian/%(version)s'
+    --git-upstream-tag=UPSTREAM_TAG
+                        Format string for upstream tags, default is
+                        'upstream/%(version)s'
+
+  orig tarball options:
+    options related to the creation of the orig tarball
+
+    --git-upstream-tree=UPSTREAM_TREE
+                        Where to generate the upstream tarball from (tag or
+                        branch), default is 'TAG'
+    --git-pristine-tar  Use pristine-tar to create orig tarball, default is
+                        'True'
+    --git-no-pristine-tar
+                        negates '--git-pristine-tar'
+    --git-pristine-tar-commit
+                        When generating a tarball commit it to the pristine-
+                        tar branch 'False' default is 'False'
+    --git-no-pristine-tar-commit
+                        negates '--git-pristine-tar-commit'
+    --git-force-create  force creation of orig tarball
+    --git-no-create-orig
+                        don't create orig tarball
+    --git-tarball-dir=TARBALL_DIR
+                        location to look for external tarballs
+    --git-compression=COMP_TYPE
+                        Compression type, default is 'auto'
+    --git-compression-level=COMP_LEVEL
+                        Compression level, default is '9'
+
+  branch options:
+    branch layout options
+
+    --git-upstream-branch=UPSTREAM_BRANCH
+                        Upstream branch, default is 'upstream'
+    --git-debian-branch=DEBIAN_BRANCH
+                        Branch the Debian package is being developed on,
+                        default is 'master'
+    --git-ignore-branch
+                        Build although debian-branch != current branch,
+                        default is 'False'
+    --git-no-ignore-branch
+                        negates '--git-ignore-branch'
+    --git-submodules    Transparently handle submodules in the upstream tree,
+                        default is 'False'
+    --git-no-submodules
+                        negates '--git-submodules'
+
+  external command options:
+    how and when to invoke external commands and hooks
+
+    --git-builder=BUILDER
+                        command to build the Debian package, default is
+                        'debuild -i -I'
+    --git-cleaner=CLEANER
+                        command to clean the working copy, default is 'debuild
+                        -d clean'
+    --git-prebuild=PREBUILD
+                        command to run before a build, default is ''
+    --git-postexport=POSTEXPORT
+                        command to run after exporting the source tree,
+                        default is ''
+    --git-postbuild=POSTBUILD
+                        hook run after a successful build, default is ''
+    --git-posttag=POSTTAG
+                        hook run after a successful tag operation, default is
+                        ''
+    --git-pbuilder      Invoke git-pbuilder for building, default is 'False'
+    --git-no-pbuilder   negates '--git-pbuilder'
+    --git-qemubuilder   Invoke git-pbuilder with qemubuilder for building,
+                        default is 'False'
+    --git-no-qemubuilder
+                        negates '--git-qemubuilder'
+    --git-dist=PBUILDER_DIST
+                        Build for this distribution when using git-pbuilder,
+                        default is 'sid'
+    --git-arch=PBUILDER_ARCH
+                        Build for this architecture when using git-pbuilder,
+                        default is ''
+    --git-pbuilder-autoconf
+                        Wheter to configure pbuilder automatically, default is
+                        'True'
+    --git-no-pbuilder-autoconf
+                        negates '--git-pbuilder-autoconf'
+    --git-pbuilder-options=PBUILDER_OPTIONS
+                        Options to pass to pbuilder, default is ''
+    --git-hooks         Enable running all hooks, default is True
+    --git-no-hooks      negates '--git-hooks'
+
+  export build-tree options:
+    alternative build tree related options
+
+    --git-export-dir=EXPORT_DIR
+                        before building the package export the source into
+                        EXPORT_DIR, default is ''
+    --git-export=TREEISH
+                        export treeish object TREEISH, default is 'HEAD'
+    --git-purge         Purge exported package build directory. Default is
+                        'True'
+    --git-no-purge      negates '--git-purge'
+    --git-dont-purge    deprecated, use --git-no-purge instead
+    --git-overlay       extract orig tarball when using export-dir option,
+                        default is 'False'
+    --git-no-overlay    negates '--git-overlay'
+Usage: setup.py [options] repository - clone a remote repository
+
+Options:
+  --version             show program's version number and exit
+  -h, --help            show this help message and exit
+  -v, --verbose         verbose command execution
+  --color=COLOR         Whether to use colored output, default is 'auto'
+  --color-scheme=COLOR_SCHEME
+                        Colors to use in output (when color is enabled),
+                        format is '<debug>:<info>:<warning>:<error>', e.g.
+                        'cyan:34::'. Numerical values and color names are
+                        accepted, empty fields indicate using the default.
+
+  branch options:
+    branch tracking and layout options
+
+    --all               track all branches, not only debian and upstream
+    --upstream-branch=UPSTREAM_BRANCH
+                        Upstream branch, default is 'upstream'
+    --debian-branch=DEBIAN_BRANCH
+                        Branch the Debian package is being developed on,
+                        default is 'master'
+    --pristine-tar      Use pristine-tar to create orig tarball, default is
+                        'True'
+    --no-pristine-tar   negates '--pristine-tar'
+    --depth=DEPTH       git history depth (for creating shallow clones)
+Usage: setup.py [options] - create a remote repository
+
+Options:
+  --version             show program's version number and exit
+  -h, --help            show this help message and exit
+  -v, --verbose         verbose command execution
+  --color=COLOR         Whether to use colored output, default is 'auto'
+  --color-scheme=COLOR_SCHEME
+                        Colors to use in output (when color is enabled),
+                        format is '<debug>:<info>:<warning>:<error>', e.g.
+                        'cyan:34::'. Numerical values and color names are
+                        accepted, empty fields indicate using the default.
+  --remote-name=NAME    The name of the remote, default is 'origin'
+  --template-dir=TEMPLATE_DIR
+                        Template directory used by git init, default is ''
+  --remote-config=REMOTE_CONFIG
+                        Remote defintion in gbp.conf used to create the remote
+                        repository, default is ''
+
+  branch options:
+    branch layout and tracking options
+
+    --remote-url-pattern=REMOTE_URL
+                        Remote url pattern to create the repo at, default is
+                        'ssh://git.debian.org/git/collab-maint/%(pkg)s.git'
+    --upstream-branch=UPSTREAM_BRANCH
+                        Upstream branch, default is 'upstream'
+    --debian-branch=DEBIAN_BRANCH
+                        Branch the Debian package is being developed on,
+                        default is 'master'
+    --pristine-tar      Use pristine-tar to create orig tarball, default is
+                        'True'
+    --no-pristine-tar   negates '--pristine-tar'
+    --track             Set up tracking for remote branches, default is 'True'
+    --no-track          negates '--track'
+Usage: setup.py [options] paths
+
+Options:
+  --version             show program's version number and exit
+  -h, --help            show this help message and exit
+  --ignore-branch       Build although debian-branch != current branch,
+                        default is 'False'
+  --no-ignore-branch    negates '--ignore-branch'
+  --git-log=GIT_LOG     options to pass to git-log, default is '--no-merges'
+  -v, --verbose         verbose command execution
+  --color=COLOR         Whether to use colored output, default is 'auto'
+  --color-scheme=COLOR_SCHEME
+                        Colors to use in output (when color is enabled),
+                        format is '<debug>:<info>:<warning>:<error>', e.g.
+                        'cyan:34::'. Numerical values and color names are
+                        accepted, empty fields indicate using the default.
+  --commit-msg=COMMIT_MSG
+                        Format string for commit messag used to commit, the
+                        changelog, default is 'Update changelog for
+                        %(version)s release'
+  -c, --commit          commit changelog file after generating
+
+  commit range options:
+    which commits to add to the changelog
+
+    -s SINCE, --since=SINCE
+                        commit to start from (e.g. HEAD^^^, debian/0.4.3)
+    -a, --auto          autocomplete changelog from last snapshot or tag
+
+  release & version number options:
+    what version number and release to use
+
+    -R, --release       mark as release
+    -S, --snapshot      mark as snapshot build
+    -D DISTRIBUTION, --distribution=DISTRIBUTION
+                        Set distribution
+    --force-distribution
+                        Force the provided distribution to be used, even if it
+                        doesn't match the list of known distributions
+    -N NEW_VERSION, --new-version=NEW_VERSION
+                        use this as base for the new version number
+    -U URGENCY, --urgency=URGENCY
+                        Set urgency level
+    --bpo               Increment the Debian release number for an upload to
+                        backports, and add a backport upload changelog
+                        comment.
+    --nmu               Increment the Debian release number for a non-
+                        maintainer upload
+    --qa                Increment the Debian release number for a Debian QA
+                        Team upload, and add a QA upload changelog comment.
+    --team              Increment the Debian release number for a Debian Team
+                        upload, and add a Team upload changelog comment.
+    --security          Increment the Debian release number for a security
+                        upload and add a security upload changelog comment.
+    --git-author        Use name and email from git-config for changelog
+                        trailer, default is 'False'
+    --no-git-author     negates '--git-author'
+
+  commit message formatting:
+    howto format the changelog entries
+
+    --meta              Parse meta tags in commit messages, default is 'False'
+    --no-meta           negates '--meta'
+    --meta-closes=META_CLOSES
+                        Meta tags for the bts close commands, default is
+                        'Closes|LP'
+    --full              Include the full commit message instead of only the
+                        first line, default is 'False'
+    --no-full           negates '--full'
+    --id-length=N       include N digits of the commit id in the changelog
+                        entry, default is '0'
+    --ignore-regex=IGNORE_REGEX
+                        Ignore commit lines matching regex, default is ''
+    --multimaint        Note multiple maintainers, default is 'True'
+    --no-multimaint     negates '--multimaint'
+    --multimaint-merge  Merge commits by maintainer, default is 'False'
+    --no-multimaint-merge
+                        negates '--multimaint-merge'
+    --spawn-editor=SPAWN_EDITOR
+                        Whether to spawn an editor after adding the changelog
+                        entry, default is 'release'
+
+  branch and tag naming:
+    branch names and tag formats
+
+    --debian-branch=DEBIAN_BRANCH
+                        Branch the Debian package is being developed on,
+                        default is 'master'
+    --upstream-tag=UPSTREAM_TAG
+                        Format string for upstream tags, default is
+                        'upstream/%(version)s'
+    --debian-tag=DEBIAN_TAG
+                        Format string for debian tags, default is
+                        'debian/%(version)s'
+    --snapshot-number=SNAPSHOT_NUMBER
+                        expression to determine the next snapshot number,
+                        default is 'snapshot + 1'
+
+  customization:
+    options for customization
+
+    --customizations=CUSTOMIZATION_FILE
+                        Load Python code from CUSTOMIZATION_FILE.  At the
+                        moment, the only useful thing the code can do is
+                        define a custom format_changelog_entry() function.
+Usage: setup.py [options] /path/to/upstream-version.tar.gz | --uscan
+
+Options:
+  --version             show program's version number and exit
+  -h, --help            show this help message and exit
+  --interactive         Run command interactively, default is 'True'
+  --no-interactive      negates '--interactive'
+  -v, --verbose         verbose command execution
+  --color=COLOR         Whether to use colored output, default is 'auto'
+  --color-scheme=COLOR_SCHEME
+                        Colors to use in output (when color is enabled),
+                        format is '<debug>:<info>:<warning>:<error>', e.g.
+                        'cyan:34::'. Numerical values and color names are
+                        accepted, empty fields indicate using the default.
+  --no-dch              deprecated - don't use.
+  --uscan               use uscan(1) to download the new tarball.
+
+  import options:
+    pristine-tar and filtering
+
+    --filter=FILTERS    Files to filter out during import (can be given
+                        multiple times), default is []
+    --pristine-tar      Use pristine-tar to create orig tarball, default is
+                        'True'
+    --no-pristine-tar   negates '--pristine-tar'
+    --filter-pristine-tar
+                        Filter pristine-tar when filter option is used,
+                        default is 'False'
+    --no-filter-pristine-tar
+                        negates '--filter-pristine-tar'
+    --import-msg=IMPORT_MSG
+                        Format string for commit message used to commit the
+                        upstream tarball, default is 'Imported Upstream
+                        version %(version)s'
+    --symlink-orig      Whether to creat a symlink from the upstream tarball
+                        to the orig.tar.gz if needed, default is 'True'
+    --no-symlink-orig   negates '--symlink-orig'
+
+  version and branch naming options:
+    version number and branch layout options
+
+    -u VERSION, --upstream-version=VERSION
+                        Upstream Version
+    --debian-branch=DEBIAN_BRANCH
+                        Branch the Debian package is being developed on,
+                        default is 'master'
+    --upstream-branch=UPSTREAM_BRANCH
+                        Upstream branch, default is 'upstream'
+    --upstream-vcs-tag=VCS_TAG
+                        Upstream VCS tag add to the merge commit
+    --merge             After the import merge the result to the debian
+                        branch, default is 'True'
+    --no-merge          negates '--merge'
+
+  tag options:
+    options related to git tag creation
+
+    --sign-tags         Whether to sign tags, default is 'True'
+    --no-sign-tags      negates '--sign-tags'
+    --keyid=KEYID       GPG keyid to sign tags with, default is '0x3f3e6426'
+    --upstream-tag=UPSTREAM_TAG
+                        Format string for upstream tags, default is
+                        'upstream/%(version)s'
+
+  external command options:
+    how and when to invoke external commands and hooks
+
+    --postimport=POSTIMPORT
+                        hook run after a successful import, default is ''
+Usage: setup.py [options] /path/to/package.dsc
+
+Options:
+  --version             show program's version number and exit
+  -h, --help            show this help message and exit
+  -v, --verbose         verbose command execution
+  --color=COLOR         Whether to use colored output, default is 'auto'
+  --color-scheme=COLOR_SCHEME
+                        Colors to use in output (when color is enabled),
+                        format is '<debug>:<info>:<warning>:<error>', e.g.
+                        'cyan:34::'. Numerical values and color names are
+                        accepted, empty fields indicate using the default.
+  --download            download source package
+
+  import options:
+    pristine-tar and filtering
+
+    --filter=FILTERS    Files to filter out during import (can be given
+                        multiple times), default is []
+    --pristine-tar      Use pristine-tar to create orig tarball, default is
+                        'True'
+    --no-pristine-tar   negates '--pristine-tar'
+    --allow-same-version
+                        allow to import already imported version
+    --author-is-committer
+                        Use the authors's name also as the comitter's name,
+                        default is 'False'
+    --no-author-is-committer
+                        negates '--author-is-committer'
+    --author-date-is-committer-date
+                        Use the authors's date as the comitter's date, default
+                        is 'False'
+    --no-author-date-is-committer-date
+                        negates '--author-date-is-committer-date'
+    --allow-unauthenticated
+                        Don't verify integrity of downloaded source, default
+                        is 'False'
+    --no-allow-unauthenticated
+                        negates '--allow-unauthenticated'
+
+  version and branch naming options:
+    version number and branch layout options
+
+    --debian-branch=DEBIAN_BRANCH
+                        Branch the Debian package is being developed on,
+                        default is 'master'
+    --upstream-branch=UPSTREAM_BRANCH
+                        Upstream branch, default is 'upstream'
+    --create-missing-branches
+                        Create missing branches automatically, default is
+                        'False'
+    --no-create-missing-branches
+                        negates '--create-missing-branches'
+
+  tag options:
+    options related to git tag creation
+
+    --sign-tags         Whether to sign tags, default is 'True'
+    --no-sign-tags      negates '--sign-tags'
+    --keyid=KEYID       GPG keyid to sign tags with, default is '0x3f3e6426'
+    --debian-tag=DEBIAN_TAG
+                        Format string for debian tags, default is
+                        'debian/%(version)s'
+    --upstream-tag=UPSTREAM_TAG
+                        Format string for upstream tags, default is
+                        'upstream/%(version)s'
+    --skip-debian-tag   Don't add a tag after importing the Debian patch
+Usage: setup.py [options] - safely update a repository from remote
+
+Options:
+  --version             show program's version number and exit
+  -h, --help            show this help message and exit
+  -v, --verbose         verbose command execution
+  --color=COLOR         Whether to use colored output, default is 'auto'
+  --color-scheme=COLOR_SCHEME
+                        Colors to use in output (when color is enabled),
+                        format is '<debug>:<info>:<warning>:<error>', e.g.
+                        'cyan:34::'. Numerical values and color names are
+                        accepted, empty fields indicate using the default.
+
+  branch options:
+    branch update and layout options
+
+    --ignore-branch     Build although debian-branch != current branch,
+                        default is 'False'
+    --no-ignore-branch  negates '--ignore-branch'
+    --force             force a branch update even if it can't be fast
+                        forwarded
+    --redo-pq           redo the patch queue branch after a pull. Warning:
+                        this drops the old patch-queue branch
+    --upstream-branch=UPSTREAM_BRANCH
+                        Upstream branch, default is 'upstream'
+    --debian-branch=DEBIAN_BRANCH
+                        Branch the Debian package is being developed on,
+                        default is 'master'
+    --pristine-tar      Use pristine-tar to create orig tarball, default is
+                        'True'
+    --no-pristine-tar   negates '--pristine-tar'
+    --depth=DEPTH       git history depth (for deepening shallow clones)
+Usage: setup.py [options] action - maintain patches on a patch queue branch
+Actions:
+  export         export the patch queue associated to the current branch
+                 into a quilt patch series in debian/patches/ and update the
+                 series file.
+  import         create a patch queue branch from quilt patches in debian/patches.
+  rebase         switch to patch queue branch associated to the current
+                 branch and rebase against current branch.
+  drop           drop (delete) the patch queue associated to the current branch.
+  apply          apply a patch
+  switch         switch to patch-queue branch and vice versa
+
+Options:
+  --version             show program's version number and exit
+  -h, --help            show this help message and exit
+  --patch-numbers       Whether to number patch files, default is True
+  --no-patch-numbers    negates '--patch-numbers'
+  -v, --verbose         verbose command execution
+  --topic=TOPIC         in case of 'apply' topic (subdir) to put patch into
+  --time-machine=TIME_MACHINE
+                        don't try head commit only to apply the patch queue
+                        but look TIME_MACHINE commits back, default is '1'
+  --force               in case of import even import if the branch already
+                        exists
+  --color=COLOR         Whether to use colored output, default is 'auto'
+  --color-scheme=COLOR_SCHEME
+                        Colors to use in output (when color is enabled),
+                        format is '<debug>:<info>:<warning>:<error>', e.g.
+                        'cyan:34::'. Numerical values and color names are
+                        accepted, empty fields indicate using the default.
+]]></system-out></testcase><testcase classname="tests.02_test_upstream_source_tar_unpack.TestUnpack" name="test_upstream_source_type" time="0.029"></testcase><testcase classname="tests.02_test_upstream_source_tar_unpack.TestUnpack" name="test_upstream_source_unpack" time="0.026"></testcase><testcase classname="tests.02_test_upstream_source_tar_unpack.TestUnpack" name="test_upstream_source_unpack_filtered" time="0.026"></testcase><testcase classname="tests.02_test_upstream_source_tar_unpack.TestUnpack" name="test_upstream_source_unpack_no_filter" time="0.025"></testcase><testcase classname="tests.03_test_dch_guess_version.TestGuessVersionFromUpstream" name="test_guess_epoch" time="0.468"></testcase><testcase classname="tests.03_test_dch_guess_version.TestGuessVersionFromUpstream" name="test_guess_no_epoch" time="0.484"></testcase><testcase classname="tests.04_test_submodules" name="test_empty_has_submodules" time="0.001"></testcase><testcase classname="tests.04_test_submodules" name="test_add_files" time="0.051"></testcase><testcase classname="tests.04_test_submodules" name="test_add_submodule_files" time="0.093"></testcase><testcase classname="tests.04_test_submodules" name="test_add_submodule" time="0.193"></testcase><testcase classname="tests.04_test_submodules" name="test_has_submodules" time="0.001"></testcase><testcase classname="tests.04_test_submodules" name="test_get_submodules" time="0.017"></testcase><testcase classname="tests.04_test_submodules" name="test_dump_tree" time="0.190"></testcase><testcase classname="tests.04_test_submodules" name="test_create_tarballs" time="0.191"></testcase><testcase classname="tests.04_test_submodules" name="test_check_tarfiles" time="0.006"></testcase><testcase classname="tests.04_test_submodules" name="test_add_whitespace_submodule" time="0.185"></testcase><testcase classname="tests.04_test_submodules" name="test_get_more_submodules" time="0.050"></testcase><testcase classname="tests.05_test_detection.TestDetection" name="test_guess_comp_type_auto_bzip2" time="0.001"></testcase><testcase classname="tests.05_test_detection.TestDetection" name="test_guess_comp_type_bz" time="0.000"></testcase><testcase classname="tests.05_test_detection.TestDetection" name="test_guess_comp_type_bz2" time="0.000"></testcase><testcase classname="tests.05_test_detection.TestDetection" name="test_guess_comp_type_bzip2" time="0.000"></testcase><testcase classname="tests.05_test_detection.TestDetection" name="test_guess_comp_type_gz" time="0.000"></testcase><testcase classname="tests.05_test_detection.TestDetection" name="test_guess_comp_type_gzip" time="0.000"></testcase><testcase classname="tests.05_test_detection.TestDetection" name="test_guess_comp_type_lzma" time="0.000"></testcase><testcase classname="tests.05_test_detection.TestDetection" name="test_guess_comp_type_no_pristine_tar_no_orig" time="0.001"></testcase><testcase classname="tests.05_test_detection.TestDetection" name="test_guess_comp_type_no_pristine_tar_with_multiple_origs" time="0.001"></testcase><testcase classname="tests.05_test_detection.TestDetection" name="test_guess_comp_type_no_pristine_tar_with_orig" time="0.001"></testcase><testcase classname="tests.05_test_detection.TestDetection" name="test_has_orig_false" time="0.000"></testcase><testcase classname="tests.05_test_detection.TestDetection" name="test_has_orig_true" time="0.000"></testcase><testcase classname="tests.06_test_upstream_source.TestDir" name="test_directory" time="0.003"></testcase><testcase classname="tests.06_test_upstream_source.TestTar" name="test_pack_filtered" time="0.262"></testcase><testcase classname="tests.06_test_upstream_source.TestTar" name="test_pack_tar" time="0.271"></testcase><testcase classname="tests.06_test_upstream_source.TestZip" name="test_unpack" time="0.020"></testcase><testcase classname="tests.07_test_fastimport" name="test_init_fastimport" time="0.004"></testcase><testcase classname="tests.07_test_fastimport" name="test_add_file" time="0.035"></testcase><testcase classname="tests.07_test_fastimport" name="test_add_symlink" time="0.035"></testcase><testcase classname="tests.07_test_fastimport" name="test_close" time="0.031"></testcase><testcase classname="tests.07_test_fastimport" name="test_result" time="0.037"></testcase><testcase classname="tests.08_test_patch.TestPatch" name="test_filename" time="0.014"></testcase><testcase classname="tests.08_test_patch.TestPatch" name="test_header" time="0.008"></testcase><testcase classname="tests.09_test_write_tree.TestWriteTree" name="test_commit_tree" time="0.196"></testcase><testcase classname="tests.09_test_write_tree.TestWriteTree" name="test_write_tree" time="0.136"></testcase><testcase classname="tests.09_test_write_tree.TestWriteTree" name="test_write_tree_index_nonexistant" time="0.107"></testcase><testcase classname="tests.10_test_get_upstream_tree.TestGetUpstreamTree" name="test_invalid_tag" time="0.137"></testcase><testcase classname="tests.10_test_get_upstream_tree.TestGetUpstreamTree" name="test_invalid_tree" time="0.130"></testcase><testcase classname="tests.10_test_get_upstream_tree.TestGetUpstreamTree" name="test_invalid_upstream_branch" time="0.133"></testcase><testcase classname="tests.10_test_get_upstream_tree.TestGetUpstreamTree" name="test_valid_tag" time="0.163"></testcase><testcase classname="tests.10_test_get_upstream_tree.TestGetUpstreamTree" name="test_valid_tree" time="0.196"></testcase><testcase classname="tests.10_test_get_upstream_tree.TestGetUpstreamTree" name="test_valid_upstream_branch" time="0.239"></testcase><testcase classname="tests.11_test_dch_main.TestScriptDch" name="test_dch_main_increment_debian_version" time="2.956"></testcase><testcase classname="tests.11_test_dch_main.TestScriptDch" name="test_dch_main_increment_debian_version_with_auto" time="1.924"></testcase><testcase classname="tests.11_test_dch_main.TestScriptDch" name="test_dch_main_increment_debian_version_with_auto_release" time="2.453"></testcase><testcase classname="tests.11_test_dch_main.TestScriptDch" name="test_dch_main_increment_debian_version_with_auto_snapshot" time="2.288"></testcase><testcase classname="tests.11_test_dch_main.TestScriptDch" name="test_dch_main_increment_debian_version_with_release" time="2.533"></testcase><testcase classname="tests.11_test_dch_main.TestScriptDch" name="test_dch_main_increment_debian_version_with_snapshot" time="2.223"></testcase><testcase classname="tests.11_test_dch_main.TestScriptDch" name="test_dch_main_new_upstream_version" time="1.838"></testcase><testcase classname="tests.11_test_dch_main.TestScriptDch" name="test_dch_main_new_upstream_version_with_2_snapshots_auto" time="3.918"></testcase><testcase classname="tests.11_test_dch_main.TestScriptDch" name="test_dch_main_new_upstream_version_with_2_snapshots_auto_distribution" time="3.875"></testcase><testcase classname="tests.11_test_dch_main.TestScriptDch" name="test_dch_main_new_upstream_version_with_2_snapshots_commit_auto" time="5.019"></testcase><testcase classname="tests.11_test_dch_main.TestScriptDch" name="test_dch_main_new_upstream_version_with_2_snapshots_commit_auto_distribution" time="5.039"></testcase><testcase classname="tests.11_test_dch_main.TestScriptDch" name="test_dch_main_new_upstream_version_with_auto" time="1.861"></testcase><testcase classname="tests.11_test_dch_main.TestScriptDch" name="test_dch_main_new_upstream_version_with_auto_release" time="2.323"></testcase><testcase classname="tests.11_test_dch_main.TestScriptDch" name="test_dch_main_new_upstream_version_with_auto_snapshot" time="2.128"></testcase><testcase classname="tests.11_test_dch_main.TestScriptDch" name="test_dch_main_new_upstream_version_with_distribution" time="1.841"></testcase><testcase classname="tests.11_test_dch_main.TestScriptDch" name="test_dch_main_new_upstream_version_with_release" time="2.413"></testcase><testcase classname="tests.11_test_dch_main.TestScriptDch" name="test_dch_main_new_upstream_version_with_release_distribution" time="2.337"></testcase><testcase classname="tests.11_test_dch_main.TestScriptDch" name="test_dch_main_new_upstream_version_with_release_urgency" time="2.374"></testcase><testcase classname="tests.11_test_dch_main.TestScriptDch" name="test_dch_main_new_upstream_version_with_snapshot" time="2.170"></testcase><testcase classname="tests.11_test_dch_main.TestScriptDch" name="test_dch_main_new_upstream_version_with_snapshot_distribution" time="2.269"></testcase><testcase classname="tests.11_test_dch_main.TestScriptDch" name="test_dch_main_new_upstream_version_with_snapshot_release" time="0.456"><system-err><![CDATA[Usage: setup.py [options] paths
+
+setup.py: error: '--snapshot' and '--release' are incompatible options
+]]></system-err></testcase><testcase classname="tests.11_test_dch_main.TestScriptDch" name="test_dch_main_new_upstream_version_with_snapshot_urgency" time="2.249"></testcase><testcase classname="tests.11_test_dch_main.TestScriptDch" name="test_dch_main_new_upstream_version_with_urgency" time="1.886"></testcase><testcase classname="tests.12_test_deb.TestDpkgCompareVersions" name="testBadVersion" time="0.006"></testcase><testcase classname="tests.12_test_deb.TestDpkgCompareVersions" name="testGreaterThen" time="0.011"></testcase><testcase classname="tests.12_test_deb.TestDpkgCompareVersions" name="testLessThen" time="0.006"></testcase><testcase classname="tests.12_test_deb.TestDpkgCompareVersions" name="testSameVersion" time="0.011"></testcase><testcase classname="tests.12_test_deb.TestDscFile" name="test_dscfile_parse" time="0.001"></testcase><testcase classname="tests.13_test_gbp_pq.TestApplyAndCommit" name="test_apply_and_commit_patch" time="0.214"></testcase><testcase classname="tests.13_test_gbp_pq.TestApplyAndCommit" name="test_debian_missing_author" time="0.304"></testcase><testcase classname="tests.13_test_gbp_pq.TestApplyAndCommit" name="test_topic" time="0.266"></testcase><testcase classname="tests.13_test_gbp_pq.TestApplySinglePatch" name="test_apply_single_patch" time="0.312"></testcase><testcase classname="tests.13_test_gbp_pq.TestWritePatch" name="test_generate_patches" time="0.401"></testcase><testcase classname="tests.14_test_gbp_import_dscs.TestImportDscs" name="test_import_fail_first" time="0.109"></testcase><testcase classname="tests.14_test_gbp_import_dscs.TestImportDscs" name="test_import_fail_second" time="0.117"></testcase><testcase classname="tests.14_test_gbp_import_dscs.TestImportDscs" name="test_import_success" time="0.123"></testcase><testcase classname="tests.15_test_DebianSource.TestDebianSource" name="test_is_native_fallback_file" time="0.358"></testcase><testcase classname="tests.15_test_DebianSource.TestDebianSource" name="test_is_native_file_3_file" time="0.064"></testcase><testcase classname="tests.15_test_DebianSource.TestDebianSource" name="test_is_native_file_3_git" time="0.194"></testcase><testcase classname="tests.16_test_supercommand.TestSuperCommand" name="test_help_command" time="0.000"><system-out><![CDATA[
+Usage:
+    gbp <command> [<args>]
+
+The most commonly used commands are:
+
+    buildpackage - build a Debian package
+    import-orig  - import a new upstream tarball
+    import-dsc   - import a single Debian source package
+    import-dscs  - import multiple Debian source packages
+
+]]></system-out></testcase><testcase classname="tests.16_test_supercommand.TestSuperCommand" name="test_import" time="0.002"></testcase><testcase classname="tests.16_test_supercommand.TestSuperCommand" name="test_invalid_command" time="0.000"><system-out><![CDATA[
+Usage:
+    gbp <command> [<args>]
+
+The most commonly used commands are:
+
+    buildpackage - build a Debian package
+    import-orig  - import a new upstream tarball
+    import-dsc   - import a single Debian source package
+    import-dscs  - import multiple Debian source packages
+
+
+Usage:
+    gbp <command> [<args>]
+
+The most commonly used commands are:
+
+    buildpackage - build a Debian package
+    import-orig  - import a new upstream tarball
+    import-dsc   - import a single Debian source package
+    import-dscs  - import multiple Debian source packages
+
+]]></system-out></testcase><testcase classname="tests.16_test_supercommand.TestSuperCommand" name="test_missing_arg" time="0.000"><system-out><![CDATA[
+Usage:
+    gbp <command> [<args>]
+
+The most commonly used commands are:
+
+    buildpackage - build a Debian package
+    import-orig  - import a new upstream tarball
+    import-dsc   - import a single Debian source package
+    import-dscs  - import multiple Debian source packages
+
+]]></system-out></testcase><testcase classname="tests.17_test_dch_guess_documented_commit.TestGuessDocumentedCommit" name="test_01_from_snapshot_banner" time="0.354"></testcase><testcase classname="tests.17_test_dch_guess_documented_commit.TestGuessDocumentedCommit" name="test_02_from_tag" time="0.435"></testcase><testcase classname="tests.17_test_dch_guess_documented_commit.TestGuessDocumentedCommit" name="test_03_from_changelog_commit" time="0.480"></testcase><testcase classname="tests.17_test_dch_guess_documented_commit.TestGuessDocumentedCommit" name="test_04_not_touched" time="0.466"></testcase><testcase classname="tests.test_Changelog" name="test_parse_debian_only" time="0.294"></testcase><testcase classname="tests.test_Changelog" name="test_parse_no_eopch" time="0.294"></testcase><testcase classname="tests.test_Changelog" name="test_parse_eopch" time="0.293"></testcase><testcase classname="tests.test_Changelog" name="test_parse_name" time="0.290"></testcase><testcase classname="tests.test_Changelog" name="test_parse_last_mod" time="0.292"></testcase><testcase classname="tests.test_Changelog" name="test_parse_sections" time="0.294"></testcase><testcase classname="tests.test_Changelog" name="test_add_section" time="1.082"></testcase><testcase classname="tests.test_Changelog" name="test_add_entry" time="1.743"></testcase><testcase classname="tests.test_Config" name="test_option_parser" time="0.006"></testcase><testcase classname="tests.test_Config" name="test_option_parser_debian" time="0.005"></testcase><testcase classname="tests.test_Config" name="test_option_group" time="0.006"></testcase><testcase classname="tests.test_Config" name="test_tristate" time="0.005"></testcase><testcase classname="tests.test_Config" name="test_parser_fallback" time="0.006"></testcase><testcase classname="tests.test_Config" name="test_filter" time="0.007"></testcase><testcase classname="tests.test_Control" name="test_parse_control" time="0.003"></testcase><testcase classname="tests.test_Control" name="test_no_control_error" time="0.002"></testcase><testcase classname="tests.test_GitModifier" name="test_author" time="0.003"></testcase><testcase classname="tests.test_GitModifier" name="test_date" time="0.004"></testcase><testcase classname="tests.test_GitModifier" name="test_dict" time="0.002"></testcase><testcase classname="tests.test_GitRepository" name="test_create" time="0.064"></testcase><testcase classname="tests.test_GitRepository" name="test_empty" time="0.163"></testcase><testcase classname="tests.test_GitRepository" name="test_add_files" time="0.134"></testcase><testcase classname="tests.test_GitRepository" name="test_branch_master" time="0.121"></testcase><testcase classname="tests.test_GitRepository" name="test_clean" time="0.112"></testcase><testcase classname="tests.test_GitRepository" name="test_create_branch" time="0.077"></testcase><testcase classname="tests.test_GitRepository" name="test_delete_branch" time="0.166"></testcase><testcase classname="tests.test_GitRepository" name="test_set_branch" time="0.184"></testcase><testcase classname="tests.test_GitRepository" name="test_rename_branch" time="0.150"></testcase><testcase classname="tests.test_GitRepository" name="test_set_upstream_branch" time="0.333"></testcase><testcase classname="tests.test_GitRepository" name="test_get_upstream_branch" time="0.135"></testcase><testcase classname="tests.test_GitRepository" name="test_tag" time="0.156"></testcase><testcase classname="tests.test_GitRepository" name="test_describe" time="0.289"></testcase><testcase classname="tests.test_GitRepository" name="test_find_tag" time="0.098"></testcase><testcase classname="tests.test_GitRepository" name="test_move_tag" time="0.137"></testcase><testcase classname="tests.test_GitRepository" name="test_delete_tag" time="0.089"></testcase><testcase classname="tests.test_GitRepository" name="test_get_obj_type" time="0.117"></testcase><testcase classname="tests.test_GitRepository" name="test_list_files" time="0.212"></testcase><testcase classname="tests.test_GitRepository" name="test_get_commits" time="0.100"></testcase><testcase classname="tests.test_GitRepository" name="test_get_commit_info" time="0.107"></testcase><testcase classname="tests.test_GitRepository" name="test_diff" time="0.141"></testcase><testcase classname="tests.test_GitRepository" name="test_mirror_clone" time="0.447"></testcase><testcase classname="tests.test_GitRepository" name="test_clone" time="0.444"></testcase><testcase classname="tests.test_GitRepository" name="test_get_remotes" time="0.084"></testcase><testcase classname="tests.test_GitRepository" name="test_merge" time="0.255"></testcase><testcase classname="tests.test_GitRepository" name="test_pull" time="0.467"></testcase><testcase classname="tests.test_GitRepository" name="test_fetch" time="0.551"></testcase><testcase classname="tests.test_GitRepository" name="test_create_bare" time="0.101"></testcase><testcase classname="tests.test_GitRepository" name="test_nonexistant" time="0.008"></testcase><testcase classname="tests.test_GitRepository" name="test_create_noperm" time="0.004"></testcase><testcase classname="tests.test_GitRepository" name="test_checkout" time="0.230"></testcase><testcase classname="tests.test_GitRepository" name="test_gc" time="0.197"></testcase><testcase classname="tests.test_GitRepository" name="test_grep_log" time="0.168"></testcase><testcase classname="tests.test_GitRepository" name="test_is_ff" time="0.092"></testcase><testcase classname="tests.test_GitRepository" name="test_update_ref" time="0.067"></testcase><testcase classname="tests.test_GitRepository" name="test_make_tree" time="0.124"></testcase><testcase classname="tests.test_GitRepository" name="test_update_submodules" time="0.042"></testcase><testcase classname="tests.test_GitRepository" name="test_get_merge_base" time="0.082"></testcase><testcase classname="tests.test_GitRepository" name="test_cmd_has_feature" time="1.220"></testcase><testcase classname="tests.test_GitRepository" name="test_teardown" time="0.002"></testcase><testcase classname="tests.test_GitVfs" name="test_read" time="0.174"></testcase><testcase classname="tests.test_PristineTar" name="test_create" time="0.064"></testcase><testcase classname="tests.test_PristineTar" name="test_empty_repo" time="0.081"></testcase><testcase classname="tests.test_PristineTar" name="test_commit_dir" time="0.159"></testcase><testcase classname="tests.test_PristineTar" name="test_create_tarball" time="0.062"></testcase><testcase classname="tests.test_PristineTar" name="test_pristine_tar_commit" time="0.397"></testcase><testcase classname="tests.test_PristineTar" name="test_pristine_has_commit" time="0.242"></testcase><testcase classname="tests.test_PristineTar" name="test_pristine_tar_checkout" time="0.377"></testcase><testcase classname="tests.test_PristineTar" name="test_teardown" time="0.002"></testcase></testsuite>
