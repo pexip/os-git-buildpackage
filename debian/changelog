@@ -1,3 +1,12 @@
+git-buildpackage (0.6.8pexip1) precise; urgency=low
+
+  * Backport to precise:
+      * debian/control, tests/11_test_dch_main.py: Revert upstream
+        commit e746d5ff8ac820f619e49c34e941ce0dcce2d053
+      * setup.cfg: Disable cover-min-percentage option
+
+ -- John-Mark Bell <jmb@pexip.com>  Wed, 25 Dec 2013 18:58:23 +0000
+
 git-buildpackage (0.6.8) unstable; urgency=medium
 
   * [f5718b8] No need to document --verbose.  Properly document --help
