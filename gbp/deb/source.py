@@ -56,7 +56,7 @@ class DebianSource(object):
         else:
             self._vfs = vfs
 
-    def is_native(self):
+    def is_native(self, has_upstream):
         """
         Whether this is a native debian package
         """
@@ -66,12 +66,15 @@ class DebianSource(object):
             if f.type:
                 return f.type == 'native'
         except IOError as e:
-            pass # Fall back to changelog parsing
+            pass # No format file; consider format 1.0
 
-        try:
-            return not '-' in self.changelog.version
-        except IOError as e:
-            raise DebianSourceError("Failed to determine source format: %s" % e)
+        # We actually have no way of knowing whether this is a native package 
+        # or not at this point. Although policy indicates that native packages 
+        # may not have a - in the version string, reality differs -- see 
+        # lintian's native-package-with-dash-version tag. Thus, inspecting
+        # the version is not robust. Instead, consider this a native package
+        # if the caller has declared that there's no upstream available.
+        return not has_upstream
 
     @property
     def changelog(self):

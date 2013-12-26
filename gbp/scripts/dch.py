@@ -448,7 +448,8 @@ def main(argv):
         else:
             add_section = False
 
-        if add_section and not version_change and not source.is_native():
+        has_upstream_tag = repo.has_upstream_tag(options.upstream_tag)
+        if add_section and not version_change and not source.is_native(has_upstream_tag):
             # Get version from upstream if none provided
             v = guess_version_from_upstream(repo, options.upstream_tag, cp)
             if v:

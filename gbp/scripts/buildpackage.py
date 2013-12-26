@@ -145,7 +145,7 @@ def export_source(repo, tree, source, options, dest_dir, tarball_dir):
     """
     # Extract orig tarball if git-overlay option is selected:
     if options.overlay:
-        if source.is_native():
+        if source.is_native(repo.has_upstream_tag(options.upstream_tag)):
             raise GbpError("Cannot overlay Debian native package")
         extract_orig(os.path.join(tarball_dir,
                                   du.orig_file(source.changelog,
@@ -193,7 +193,8 @@ def source_vfs(repo, options, tree):
             source = DebianSource(GitVfs(repo, tree))
         else:
             source = DebianSource('.')
-            source.is_native() # check early if this works
+            # check early if this works
+            source.is_native(repo.has_upstream_tag(options.upstream_tag))
     except Exception as e:
         raise GbpError("Can't determine package type: %s" % e)
     return source
@@ -526,7 +527,7 @@ def main(argv):
             # sources and create different tarballs (#640382)
             # We don't delay it in general since we want to fail early if the
             # tarball is missing.
-            if not source.is_native():
+            if not source.is_native(repo.has_upstream_tag(options.upstream_tag)):
                 if options.postexport:
                     gbp.log.info("Postexport hook set, delaying tarball creation")
                 else:
@@ -544,15 +545,15 @@ def main(argv):
                                  extra_env={'GBP_GIT_DIR': repo.git_dir,
                                             'GBP_TMP_DIR': tmp_dir})(dir=tmp_dir)
 
-                major = (source.changelog.debian_version if source.is_native()
-                         else source.changelog.upstream_version)
+                major = (source.changelog.upstream_version if source.changelog.has_upstream_version()
+                         else source.changelog.debian_version)
                 export_dir = os.path.join(output_dir, "%s-%s" % (source.sourcepkg, major))
                 gbp.log.info("Moving '%s' to '%s'" % (tmp_dir, export_dir))
                 move_old_export(export_dir)
                 os.rename(tmp_dir, export_dir)
 
                 # Delayed tarball creation in case a postexport hook is used:
-                if not source.is_native() and options.postexport:
+                if not source.is_native(repo.has_upstream_tag(options.upstream_tag)) and options.postexport:
                     prepare_upstream_tarball(repo, source.changelog, options, tarball_dir,
                                              output_dir)
 

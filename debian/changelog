@@ -1,3 +1,18 @@
+git-buildpackage (0.6.8pexip2) precise; urgency=low
+
+  * Improve detection of format 1.0 native packages:
+      * gbp/deb/changelog.py: introduce has_upstream_version()
+      * gbp/deb/dscfile.py: Improve detection of native packages
+        which feature '-' in their version
+      * gbp/deb/git.py: introduce has_upstream_tag()
+      * gbp/deb/source.py: Modify is_native() to better handle
+        native packages using format version 1.0 and containing
+        '-' in their version
+      * gbp/scripts/buildpackage.py, gbp/scripts/dch.py,
+        tests/15_test_DebianSource.py: Follow above changes
+
+ -- John-Mark Bell <jmb@pexip.com>  Thu, 26 Dec 2013 16:41:34 +0000
+
 git-buildpackage (0.6.8pexip1) precise; urgency=low
 
   * Backport to precise:

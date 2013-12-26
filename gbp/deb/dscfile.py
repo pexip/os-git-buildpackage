@@ -88,6 +88,13 @@ class DscFile(object):
                 continue
         f.close()
 
+        if not self.deb_tgz and not self.diff and '.orig.' not in self.tgz:
+            # This package is actually native, despite the version identifier
+            self.native = True
+            if self.debian_version:
+                self.upstream_version += "-%s" % (self.debian_version, )
+                self.debian_version = ""
+
         if not self.pkg:
             raise GbpError("Cannot parse package name from '%s'" % self.dscfile)
         elif not self.tgz:

@@ -34,33 +34,21 @@ class TestDebianSource(testutils.DebianGitTestRepo):
         """Test native package of format 3"""
         source = DebianSource('.')
         os.makedirs('debian/source')
-        self.assertRaises(DebianSourceError,
-                          source.is_native)
 
         dsf = DebianSourceFormat.from_content("3.0", "native")
         self.assertEqual(dsf.type, 'native')
-        self.assertTrue(source.is_native())
+        self.assertTrue(source.is_native(False))
 
         dsf = DebianSourceFormat.from_content("3.0", "quilt")
         self.assertEqual(dsf.type, 'quilt')
-        self.assertFalse(source.is_native())
+        self.assertFalse(source.is_native(True))
 
     def test_is_native_fallback_file(self):
         """Test native package without a debian/source/format file"""
         source = DebianSource('.')
         os.makedirs('debian/')
-        self.assertRaises(DebianSourceError,
-                          source.is_native)
-
-        with open('debian/changelog', 'w') as f:
-            f.write("""git-buildpackage (0.2.3) git-buildpackage; urgency=low
-
-  * git doesn't like '~' in tag names so replace this with a dot when tagging
-
- -- Guido Guenther <agx@sigxcpu.org>  Mon,  2 Oct 2006 18:30:20 +0200
-""")
-        source = DebianSource('.')
-        self.assertTrue(source.is_native())
+        self.assertFalse(source.is_native(True))
+        self.assertTrue(source.is_native(False))
 
     def _commit_format(self, version, format):
         # Commit a format file to disk
@@ -77,8 +65,8 @@ class TestDebianSource(testutils.DebianGitTestRepo):
         """Test native package of format 3 from git"""
         self._commit_format('3.0', 'native')
         source = DebianSource(GitVfs(self.repo))
-        self.assertTrue(source.is_native())
+        self.assertTrue(source.is_native(False))
 
         self._commit_format('3.0', 'quilt')
         source = DebianSource(GitVfs(self.repo))
-        self.assertFalse(source.is_native())
+        self.assertFalse(source.is_native(True))

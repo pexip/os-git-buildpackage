@@ -84,6 +84,21 @@ class DebianGitRepository(GitRepository):
             version = "%s:%s" % (epoch, version)
         return version
 
+    def has_upstream_tag(self, upstream_tag_format, commit='HEAD'):
+        """
+        Whether the repo has any upstream tag
+
+        @return: C{True} if the repo has at least one upstream tag, C{False}
+            otherwise
+        @rtype: C{Bool}
+        """
+        pattern = upstream_tag_format % dict(version='*')
+        try:
+            tag = self.find_tag(commit, pattern=pattern)
+        except GitRepositoryError:
+            return False
+        return True
+
     @staticmethod
     def _build_legacy_tag(format, version):
         """
