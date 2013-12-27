@@ -1,3 +1,9 @@
+git-buildpackage (0.6.8pexip3) precise; urgency=low
+
+  * Preserve empty directories in source packages.
+
+ -- John-Mark Bell <jmb@pexip.com>  Fri, 27 Dec 2013 15:43:24 +0000
+
 git-buildpackage (0.6.8pexip2) precise; urgency=low
 
   * Improve detection of format 1.0 native packages:
