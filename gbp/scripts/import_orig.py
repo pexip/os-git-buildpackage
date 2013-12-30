@@ -34,97 +34,202 @@ from gbp.scripts.common.import_orig import (OrigUpstreamSource, cleanup_tmp_tree
                                             repack_source, is_link_target)
 
 
-def prepare_pristine_tar(archive, pkg, version):
-    """
-    Prepare the upstream source for pristine tar import.
+class SourceImportManager(object):
+    """Object to manage the import of an upstream source."""
+    def __init__(self, path):
+        self.name = None
+        self.version = None
+        self.component = None
 
-    This checks if the upstream source is actually a tarball
-    and creates a symlink from I{archive}
-    to I{<pkg>_<version>.orig.tar.<ext>} so pristine-tar will
-    see the correct basename.
+        self._commit = None
+        self._linked = False
+        self._pristine_orig = None
+        self._source = OrigUpstreamSource(path)
+        self._tag = None
+        self._tmpdir = None
 
-    @param archive: the upstream source's name
-    @type archive: C{str}
-    @param pkg: the source package's name
-    @type pkg: C{str}
-    @param version: the upstream version number
-    @type version: C{str}
-    @rtype: C{str}
-    """
-    linked = False
-    if os.path.isdir(archive):
-        return None
 
-    ext = os.path.splitext(archive)[1]
-    if ext in ['.tgz', '.tbz2', '.tlz', '.txz' ]:
-        ext = ".%s" % ext[2:]
+    def detect_name_version_and_component(self, repo, options):
+        # Guess defaults for the package name, version, and component from the
+        # original tarball.
+        (guessed_package, guessed_version, guessed_component) = self._source.guess_version() or ('', '', '')
 
-    link = "../%s_%s.orig.tar%s" % (pkg, version, ext)
-
-    if os.path.basename(archive) != os.path.basename(link):
+        # Try to find the source package name
         try:
-            if not is_link_target(archive, link):
-                os.symlink(os.path.abspath(archive), link)
-                linked = True
-        except OSError as err:
-                raise GbpError("Cannot symlink '%s' to '%s': %s" % (archive, link, err[1]))
-        return (link, linked)
-    else:
-        return (archive, linked)
+            cp = ChangeLog(filename='debian/changelog')
+            sourcepackage = cp['Source']
+        except NoChangeLogError:
+            try:
+                # Check the changelog file from the repository, in case
+                # we're not on the debian-branch (but upstream, for
+                # example).
+                cp = parse_changelog_repo(repo, options.debian_branch, 'debian/changelog')
+                sourcepackage = cp['Source']
+            except NoChangeLogError:
+                if options.interactive:
+                    sourcepackage = ask_package_name(guessed_package,
+                                                     DebianPkgPolicy.is_valid_packagename,
+                                                     DebianPkgPolicy.packagename_msg)
+                else:
+                    if guessed_package:
+                        sourcepackage = guessed_package
+                    else:
+                        raise GbpError("Couldn't determine upstream package name. Use --interactive.")
+
+        # Try to find the version.
+        if options.version:
+            version = options.version
+        else:
+            if options.interactive:
+                version = ask_package_version(guessed_version,
+                                              DebianPkgPolicy.is_valid_upstreamversion,
+                                              DebianPkgPolicy.upstreamversion_msg)
+            else:
+                if guessed_version:
+                    version = guessed_version
+                else:
+                    raise GbpError("Couldn't determine upstream version. Use '-u<version>' or --interactive.")
+
+        self.name = sourcepackage
+        self.version = version
+        self.component = guessed_component
+
+    def unpack_or_repack_as_necessary(self, options):
+        if not self._source.is_dir():
+            self._tmpdir = tempfile.mkdtemp(dir='../')
+            self._source.unpack(self._tmpdir, options.filters, self.component == '')
+            gbp.log.debug("Unpacked '%s' to '%s'" % (self._source.path, self._source.unpacked))
+
+        if self._source.needs_repack(options):
+            gbp.log.debug("Filter pristine-tar: repacking '%s' from '%s'" % (self._source.path, self._source.unpacked))
+            (self._source, self._tmpdir)  = repack_source(self._source, self.name, self.version, self.component, self._tmpdir, options.filters)
+
+        # Don't mess up our repo with git metadata from an upstream tarball
+        try:
+            if os.path.isdir(os.path.join(self._source.unpacked, '.git/')):
+                raise GbpError("The orig tarball contains .git metadata - giving up.")
+        except OSError:
+            pass
+
+    def import_into_upstream_branch(self, repo, options):
+        self._prepare_pristine_tar()
+
+        try:
+            upstream_branch = options.upstream_branch
+            if self.component:
+                upstream_branch += '-' + self.component
+
+            filter_msg = ["", " (filtering out %s)"
+                              % options.filters][len(options.filters) > 0]
+            gbp.log.info("Importing '%s' to branch '%s'%s..." % (self._source.path,
+                                                                 upstream_branch,
+                                                                 filter_msg))
+            gbp.log.info("Source package is %s" % self.name)
+            gbp.log.info("Upstream version is %s" % self.version)
+
+            msg = upstream_import_commit_msg(options, self.version)
+
+            if options.vcs_tag:
+                parents = [repo.rev_parse("%s^{}" % options.vcs_tag)]
+            else:
+                parents = None
+
+            self._commit = repo.commit_dir(self._source.unpacked,
+                                           msg=msg,
+                                           branch=upstream_branch,
+                                           other_parents=parents,
+                                           create_missing_branch=True,
+                                           )
+
+            if options.pristine_tar:
+                if self._pristine_orig:
+                    repo.pristine_tar.commit(self._pristine_orig, upstream_branch)
+                else:
+                    gbp.log.warn("'%s' not an archive, skipping pristine-tar" % self._source.path)
+
+            tagcomponent = ''
+            if self.component:
+                tagcomponent = '-' + self.component
+
+            self._tag = repo.version_to_tag(options.upstream_tag, self.version, tagcomponent)
+            repo.create_tag(name=self._tag,
+                            msg="Upstream version %s" % self.version,
+                            commit=self._commit,
+                            sign=options.sign_tags,
+                            keyid=options.keyid)
+        except GitRepositoryError as err:
+            msg = err.__str__() if len(err.__str__()) else ''
+            raise GbpError("Import of %s failed: %s" % (source.path, msg))
+
+
+    def merge_into_debian_branch(self, repo, options):
+        try:
+            if not repo.has_branch(options.debian_branch):
+                repo.create_branch(options.debian_branch, rev=self._commit)
+                repo.force_head(options.debian_branch, hard=True)
+            else:
+                gbp.log.info("Merging '%s' to '%s'" % ( self._tag, options.debian_branch ))
+                repo.set_branch(options.debian_branch)
+                try:
+                    repo.merge(self._tag)
+                except GitRepositoryError:
+                    raise GbpError("Merge failed, please resolve.")
+        except GitRepositoryError as err:
+            msg = err.__str__() if len(err.__str__()) else ''
+            raise GbpError("Import of %s failed: %s" % (source.path, msg))
+
+
+    def cleanup(self, options):
+        if self._pristine_orig and self._linked and not options.symlink_orig:
+            os.unlink(self._pristine_orig)
+
+        if self._tmpdir:
+            cleanup_tmp_tree(self._tmpdir)
+
+
+    def _prepare_pristine_tar(self):
+        """
+        Prepare the upstream source for pristine tar import.
+
+        This checks if the upstream source is actually a tarball
+        and creates a symlink from I{archive}
+        to I{<pkg>_<version>.orig.tar.<ext>} so pristine-tar will
+        see the correct basename.
+        """
+        if os.path.isdir(self._source.path):
+            return
+
+        ext = os.path.splitext(self._source.path)[1]
+        if ext in ['.tgz', '.tbz2', '.tlz', '.txz' ]:
+            ext = ".%s" % ext[2:]
+
+        if not self.component:
+            link = "../%s_%s.orig.tar%s" % (self.name, self.version, ext)
+        else:
+            link = "../%s_%s.orig-%s.tar%s" % ( self.name, self.version, self.component, ext)
+
+        if os.path.basename(self._source.path) != os.path.basename(link):
+            try:
+                if not is_link_target(self._source.path, link):
+                    os.symlink(os.path.abspath(self._source.path), link)
+                    self._linked = True
+            except OSError as err:
+                    raise GbpError("Cannot symlink '%s' to '%s': %s" % (self._source.path, link, err[1]))
+            self._pristine_orig = link
+        else:
+            self._pristine_orig = self._source.path
 
 
 def upstream_import_commit_msg(options, version):
     return options.import_msg % dict(version=version)
 
 
-def detect_name_and_version(repo, source, options):
-    # Guess defaults for the package name and version from the
-    # original tarball.
-    (guessed_package, guessed_version) = source.guess_version() or ('', '')
-
-    # Try to find the source package name
-    try:
-        cp = ChangeLog(filename='debian/changelog')
-        sourcepackage = cp['Source']
-    except NoChangeLogError:
-        try:
-            # Check the changelog file from the repository, in case
-            # we're not on the debian-branch (but upstream, for
-            # example).
-            cp = parse_changelog_repo(repo, options.debian_branch, 'debian/changelog')
-            sourcepackage = cp['Source']
-        except NoChangeLogError:
-            if options.interactive:
-                sourcepackage = ask_package_name(guessed_package,
-                                                 DebianPkgPolicy.is_valid_packagename,
-                                                 DebianPkgPolicy.packagename_msg)
-            else:
-                if guessed_package:
-                    sourcepackage = guessed_package
-                else:
-                    raise GbpError("Couldn't determine upstream package name. Use --interactive.")
-
-    # Try to find the version.
-    if options.version:
-        version = options.version
-    else:
-        if options.interactive:
-            version = ask_package_version(guessed_version,
-                                          DebianPkgPolicy.is_valid_upstreamversion,
-                                          DebianPkgPolicy.upstreamversion_msg)
-        else:
-            if guessed_version:
-                version = guessed_version
-            else:
-                raise GbpError("Couldn't determine upstream version. Use '-u<version>' or --interactive.")
-
-    return (sourcepackage, version)
 
 
-def find_source(options, args):
-    """Find the tarball to import - either via uscan or via command line argument
-    @return: upstream source filename or None if nothing to import
-    @rtype: string
+def find_sources(options, args):
+    """Find the tarball(s) to import - either via uscan or via command line argument
+    @return: list of upstream source filenames or None if nothing to import
+    @rtype: list of strings
     @raise GbpError: raised on all detected errors
     """
     if options.uscan: # uscan mode
@@ -148,13 +253,10 @@ def find_source(options, args):
         else:
             gbp.log.info("package is up to date, nothing to do.")
             return None
-    if len(args) > 1: # source specified
-        raise GbpError("More than one archive specified. Try --help.")
-    elif len(args) == 0:
+    if len(args) == 0:
         raise GbpError("No archive to import specified. Try --help.")
-    else:
-        archive = OrigUpstreamSource(args[0])
-        return archive
+
+    return [ SourceImportManager(arg) for arg in args ]
 
 
 def set_bare_repo_options(options):
@@ -239,29 +341,27 @@ def parse_args(argv):
 
 def main(argv):
     ret = 0
-    tmpdir = ''
-    pristine_orig = None
-    linked = False
 
     (options, args) = parse_args(argv)
     try:
-        source = find_source(options, args)
-        if not source:
+        sources = find_sources(options, args)
+        if not sources:
             return ret
+    except GbpError as err:
+        if len(err.__str__()):
+            gbp.log.err(err)
+        return 1 
 
+    try:
         try:
             repo = DebianGitRepository('.')
         except GitRepositoryError:
             raise GbpError("%s is not a git repository" % (os.path.abspath('.')))
 
-        # an empty repo has now branches:
+        # an empty repo has no branches:
         initial_branch = repo.get_branch()
         is_empty = False if initial_branch else True
-
-        if not repo.has_branch(options.upstream_branch) and not is_empty:
-            raise GbpError(no_upstream_branch_msg % options.upstream_branch)
-
-        (sourcepackage, version) = detect_name_and_version(repo, source, options)
+        initial_head = None if is_empty else repo.rev_parse('HEAD', short=40)
 
         (clean, out) = repo.is_clean()
         if not clean and not is_empty:
@@ -271,106 +371,70 @@ def main(argv):
         if repo.bare:
             set_bare_repo_options(options)
 
-        if not source.is_dir():
-            tmpdir = tempfile.mkdtemp(dir='../')
-            source.unpack(tmpdir, options.filters)
-            gbp.log.debug("Unpacked '%s' to '%s'" % (source.path, source.unpacked))
+        # Collect upstream branches, ensuring they're unique and exist if appropriate
+        upstream_branches = []
+        for source in sources:
+            source.detect_name_version_and_component(repo, options)
+            upstream_branch = options.upstream_branch
+            if source.component:
+                upstream_branch += '-' + source.component
+            if upstream_branch in upstream_branches:
+                raise GbpError("Duplicate component '%s'" % ( component, ))
+            if not repo.has_branch(upstream_branch) and not is_empty:
+                raise GbpError(no_upstream_branch_msg % upstream_branch)
+            upstream_branches.append(upstream_branch)
 
-        if source.needs_repack(options):
-            gbp.log.debug("Filter pristine-tar: repacking '%s' from '%s'" % (source.path, source.unpacked))
-            (source, tmpdir)  = repack_source(source, sourcepackage, version, tmpdir, options.filters)
+        # Unpack/repack each source, ensuring that there's no git metadata present
+        for source in sources:
+            source.unpack_or_repack_as_necessary(options)
 
-        (pristine_orig, linked) = prepare_pristine_tar(source.path,
-                                                       sourcepackage,
-                                                       version)
+        # Import each source into the relevant upstream branch, and create tag
+        for source in sources:
+            source.import_into_upstream_branch(repo, options)
 
-        # Don't mess up our repo with git metadata from an upstream tarball
-        try:
-            if os.path.isdir(os.path.join(source.unpacked, '.git/')):
-                raise GbpError("The orig tarball contains .git metadata - giving up.")
-        except OSError:
-            pass
+        # If merge has been requested, merge each upstream branch onto the debian branch
+        # TODO: what happens if a merge fails?
+        if options.merge:
+            for source in sources:
+                source.merge_into_debian_branch(repo, options)
 
-        try:
-            upstream_branch = [ options.upstream_branch, 'master' ][is_empty]
-            filter_msg = ["", " (filtering out %s)"
-                              % options.filters][len(options.filters) > 0]
-            gbp.log.info("Importing '%s' to branch '%s'%s..." % (source.path,
-                                                                 upstream_branch,
-                                                                 filter_msg))
-            gbp.log.info("Source package is %s" % sourcepackage)
-            gbp.log.info("Upstream version is %s" % version)
+        # If the repository is empty and master isn't the selected debian branch, merge onto master, too
+        # TODO: what happens if a merge fails?
+        if is_empty and options.debian_branch != 'master':
+            options.debian_branch = 'master'
+            for source in sources:
+                source.merge_into_debian_branch(repo, options)
 
-            import_branch = [ options.upstream_branch, None ][is_empty]
-            msg = upstream_import_commit_msg(options, version)
+        # TODO: why is this conditional on merge?
+        if options.merge and options.postimport:
+            epoch = ''
+            repo.set_branch(options.debian_branch)
+            if os.access('debian/changelog', os.R_OK):
+                # No need to check the changelog file from the
+                # repository, since we're certain that we're on
+                # the debian-branch
+                cp = ChangeLog(filename='debian/changelog')
+                if cp.has_epoch():
+                    epoch = '%s:' % cp.epoch
+            info = { 'version': "%s%s-1" % (epoch, sources[0].version) }
+            env = { 'GBP_BRANCH': options.debian_branch }
+            gbpc.Command(options.postimport % info, extra_env=env, shell=True)()
 
-            if options.vcs_tag:
-                parents = [repo.rev_parse("%s^{}" % options.vcs_tag)]
-            else:
-                parents = None
-
-            commit = repo.commit_dir(source.unpacked,
-                                     msg=msg,
-                                     branch=import_branch,
-                                     other_parents=parents,
-                                     )
-
-            if options.pristine_tar:
-                if pristine_orig:
-                    repo.pristine_tar.commit(pristine_orig, upstream_branch)
-                else:
-                    gbp.log.warn("'%s' not an archive, skipping pristine-tar" % source.path)
-
-            tag = repo.version_to_tag(options.upstream_tag, version)
-            repo.create_tag(name=tag,
-                            msg="Upstream version %s" % version,
-                            commit=commit,
-                            sign=options.sign_tags,
-                            keyid=options.keyid)
-            if is_empty:
-                repo.create_branch(options.upstream_branch, rev=commit)
-                repo.force_head(options.upstream_branch, hard=True)
-            elif options.merge:
-                gbp.log.info("Merging to '%s'" % options.debian_branch)
-                repo.set_branch(options.debian_branch)
-                try:
-                    repo.merge(tag)
-                except GitRepositoryError:
-                    raise GbpError("Merge failed, please resolve.")
-                if options.postimport:
-                    epoch = ''
-                    if os.access('debian/changelog', os.R_OK):
-                        # No need to check the changelog file from the
-                        # repository, since we're certain that we're on
-                        # the debian-branch
-                        cp = ChangeLog(filename='debian/changelog')
-                        if cp.has_epoch():
-                            epoch = '%s:' % cp.epoch
-                    info = { 'version': "%s%s-1" % (epoch, version) }
-                    env = { 'GBP_BRANCH': options.debian_branch }
-                    gbpc.Command(options.postimport % info, extra_env=env, shell=True)()
-            # Update working copy and index if we've possibly updated the
-            # checked out branch
-            current_branch = repo.get_branch()
-            if current_branch in [ options.upstream_branch,
-                                   repo.pristine_tar_branch]:
-                repo.force_head(current_branch, hard=True)
-        except (gbpc.CommandExecFailed, GitRepositoryError) as err:
-            msg = err.__str__() if len(err.__str__()) else ''
-            raise GbpError("Import of %s failed: %s" % (source.path, msg))
-    except GbpError as err:
+        if not is_empty:
+            # Restore the working copy to the pre-import state
+            current_head = repo.rev_parse('HEAD', short=40)
+            if current_head != initial_head:
+                repo.force_head(initial_head, hard=True)
+    except (gbpc.CommandExecFailed, GbpError) as err:
         if len(err.__str__()):
             gbp.log.err(err)
         ret = 1
-
-    if pristine_orig and linked and not options.symlink_orig:
-        os.unlink(pristine_orig)
-
-    if tmpdir:
-        cleanup_tmp_tree(tmpdir)
+    finally:
+        for source in sources:
+            source.cleanup(options)
 
     if not ret:
-        gbp.log.info("Successfully imported version %s of %s" % (version, source.path))
+        gbp.log.info("Successfully imported version %s of %s" % (sources[0].version, sources[0].name))
     return ret
 
 if __name__ == "__main__":

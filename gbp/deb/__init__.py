@@ -17,6 +17,7 @@
 """provides some debian source package related helpers"""
 
 import os
+import re
 import subprocess
 
 import gbp.command_wrappers as gbpc
@@ -101,6 +102,30 @@ def get_arch():
 def compare_versions(version1, version2):
     """compares to Debian versionnumbers suitable for sort()"""
     return DpkgCompareVersions()(version1, version2)
+
+
+def orig_components(main, filelist):
+    """Given an orig tarball name and a list of files, this method
+    finds component tarballs in the list that belong to the first one.
+    @return: dict(component_name=file_name, ...)
+    """
+    (path, name) = os.path.split(main)
+    if not name:
+        return False
+
+    m = re.search(r'^(?P<source>.+).orig.tar.(gz|bz2)', name)
+    if not m:
+        return False
+
+    list = {}
+    pattern = re.compile(r'%s.orig-(?P<component>[\w-]+).tar.(gz|bz2)' % (m.group('source')))
+    for f in filelist:
+        (path, name) = os.path.split(f)
+        m = pattern.search(name)
+        if m:
+            list[m.group('component')]=f
+
+    return list
 
 
 # vim:et:ts=4:sw=4:et:sts=4:ai:set list listchars=tab\:»·,trail\:·:

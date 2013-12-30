@@ -183,6 +183,11 @@ def extract_orig(orig_tarball, dest_dir):
         os.rmdir(dest_dir)
         os.rename(tmpdir, dest_dir)
 
+    src_dir = os.path.dirname(orig_tarball)
+    for component, filename in du.orig_components(orig_tarball, os.listdir(src_dir)).iteritems():
+        additional_component = UpstreamSource(filename)
+        additional_component.unpack(dest_dir, strip_toplevel=False)
+
 #}
 
 def source_vfs(repo, options, tree):
@@ -228,6 +233,16 @@ def pristine_tar_build_orig(repo, cp, output_dir, options):
                                        cp.upstream_version,
                                        options.comp_type,
                                        output_dir)
+
+            pristine_tree = repo.list_tree(repo.pristine_tar.branch,
+                                           recurse=True)
+            pristine_files = [ os.path.splitext(item[3])[0] for item in pristine_tree if item[3].endswith('.id') ]
+            for component in du.orig_components(du.orig_file(cp, options.comp_type), pristine_files).iterkeys():
+                repo.pristine_tar.checkout(cp.name,
+                                           cp.upstream_version,
+                                           options.comp_type,
+                                           output_dir,
+                                           component)
             return True
         except CommandExecFailed:
             if options.pristine_tar_commit:

@@ -32,6 +32,8 @@ class DscFile(object):
                             % DebianPkgPolicy.debianversion_chars)
     tar_re = re.compile(r'^\s\w+\s\d+\s+(?P<tar>[^_]+_[^_]+'
                          '(\.orig)?\.tar\.%s)' % compressions)
+    extra_tar_re = re.compile(r'^\s\w+\s\d+\s+(?P<tar>[^_]+_[^_]+'
+                         '\.orig-[a-z0-9-]+\.tar\.%s)' % compressions)
     diff_re = re.compile(r'^\s\w+\s\d+\s+(?P<diff>[^_]+_[^_]+'
                           '\.diff.(gz|bz2))')
     deb_tgz_re = re.compile(r'^\s\w+\s\d+\s+(?P<deb_tgz>[^_]+_[^_]+'
@@ -41,6 +43,7 @@ class DscFile(object):
     def __init__(self, dscfile):
         self.pkg = ""
         self.tgz = ""
+        self.extra_tgz = []
         self.diff = ""
         self.deb_tgz = ""
         self.pkgformat = "1.0"
@@ -73,6 +76,12 @@ class DscFile(object):
             m = self.deb_tgz_re.match(line)
             if m:
                 self.deb_tgz = os.path.join(fromdir, m.group('deb_tgz'))
+                continue
+            m = self.extra_tar_re.match(line)
+            if m:
+                extratgz = os.path.join(fromdir, m.group('tar'))
+                if extratgz not in self.extra_tgz:
+                    self.extra_tgz.append(extratgz)
                 continue
             m = self.tar_re.match(line)
             if m:

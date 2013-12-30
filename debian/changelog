@@ -1,3 +1,11 @@
+git-buildpackage (0.6.8pexip4) precise; urgency=low
+
+  * Add support for multiple orig tarballs. Based, in part,
+    on the patches attached to Debian issue #561071:
+    - http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=561071#31
+
+ -- John-Mark Bell <jmb@pexip.com>  Mon, 30 Dec 2013 23:49:13 +0000
+
 git-buildpackage (0.6.8pexip3) precise; urgency=low
 
   * Preserve empty directories in source packages.

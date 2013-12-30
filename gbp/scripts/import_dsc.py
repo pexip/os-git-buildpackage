@@ -111,27 +111,25 @@ def get_committer_from_author(author, options):
     return committer
 
 
-def check_parents(repo, branch, tag):
+def check_parents(repo, branch, parents):
     """
     Check if the upstream tag is already merged, if not, return
     the additional parent to merge
     """
-    parents = None
-    rev = None
+    unmerged_parents = []
 
-    try:
-        rev = repo.rev_parse("%s^{commit}" % tag)
-    except GitRepositoryError:
-        pass
+    for (tag, parent) in parents:
+        if not repo.branch_contains(branch, parent):
+            gbp.log.debug("Tag '%s' not yet merged into '%s'"
+                          % (tag, branch))
+            unmerged_parents.append(parent)
 
-    if rev and not repo.branch_contains(branch, rev):
-        gbp.log.debug("Tag '%s' not yet merged into '%s'"
-                      % (tag, branch))
-        parents = [rev]
+    if not unmerged_parents:
+        unmerged_parents = None
 
-    return parents
+    return unmerged_parents
 
-def apply_debian_patch(repo, unpack_dir, src, options, tag):
+def apply_debian_patch(repo, unpack_dir, src, options, parents):
     """apply the debian patch and tag appropriately"""
     try:
         os.chdir(unpack_dir)
@@ -148,7 +146,7 @@ def apply_debian_patch(repo, unpack_dir, src, options, tag):
 
         parents = check_parents(repo,
                                 options.debian_branch,
-                                tag)
+                                parents)
 
         author = get_author_from_changelog(unpack_dir)
         committer = get_committer_from_author(author, options)
@@ -181,6 +179,9 @@ def print_dsc(dsc):
         gbp.log.debug("Upstream version: %s" % dsc.upstream_version)
         gbp.log.debug("Debian version: %s" % dsc.debian_version)
         gbp.log.debug("Upstream tarball: %s" % dsc.tgz)
+        if dsc.extra_tgz:
+            for tgz in dsc.extra_tgz:
+                gbp.log.debug("Additional upstream tarball: %s" % tgz)
         if dsc.diff:
             gbp.log.debug("Debian patch: %s" % dsc.diff)
         if dsc.deb_tgz:
@@ -320,6 +321,14 @@ def main(argv):
             if repo.bare:
                 set_bare_repo_options(options)
 
+            if repo.find_version(options.debian_tag, src.version):
+                 gbp.log.warn("Version %s already imported." % src.version)
+                 if options.allow_same_version:
+                    gbp.log.info("Moving tag of version '%s' since import forced" % src.version)
+                    move_tag_stamp(repo, options.debian_tag, src.version)
+                 else:
+                    raise SkipImport
+
             dirs['tmp'] = os.path.abspath(tempfile.mkdtemp(dir='..'))
             upstream = UpstreamSource(src.tgz)
             upstream.unpack(dirs['tmp'], options.filters)
@@ -328,13 +337,7 @@ def main(argv):
             tag = repo.version_to_tag(format[0], src.upstream_version)
             msg = "%s version %s" % (format[1], src.upstream_version)
 
-            if repo.find_version(options.debian_tag, src.version):
-                 gbp.log.warn("Version %s already imported." % src.version)
-                 if options.allow_same_version:
-                    gbp.log.info("Moving tag of version '%s' since import forced" % src.version)
-                    move_tag_stamp(repo, options.debian_tag, src.version)
-                 else:
-                    raise SkipImport
+            parents = []
 
             if not repo.find_version(format[0], src.upstream_version):
                 gbp.log.info("Tag %s not found, importing %s tarball" % (tag, format[1]))
@@ -363,6 +366,7 @@ def main(argv):
                                          branch,
                                          author=author,
                                          committer=committer)
+                parents.append(( tag, commit ))
 
                 if not (src.native and options.skip_debian_tag):
                     repo.create_tag(name=tag,
@@ -377,10 +381,61 @@ def main(argv):
                         repo.pristine_tar.commit(src.tgz, options.upstream_branch)
                 if is_empty and not repo.has_branch(options.debian_branch):
                     repo.create_branch(options.debian_branch, commit)
+
+            if not src.native and src.extra_tgz:
+                for tgz in src.extra_tgz:
+                    tmp = os.path.abspath(tempfile.mkdtemp(dir='..'))
+                    try:
+                        extra = UpstreamSource(tgz)
+                        extra.unpack(tmp, options.filters, False)
+
+                        _, _, component = extra.guess_version()
+                        tagcomponent = '-' + component
+                        tag = repo.version_to_tag(format[0], src.upstream_version, tagcomponent)
+
+                        if not repo.find_version(format[0], src.upstream_version, tagcomponent):
+                            gbp.log.info("Tag %s not found, importing %s tarball" % (tag, format[1]))
+                            upstream_branch = options.upstream_branch + '-' + component
+                            if is_empty:
+                                branch = None
+                            else:
+                                branch = upstream_branch
+                                if not repo.has_branch(branch):
+                                    if options.create_missing_branches:
+                                        gbp.log.info("Creating missing branch '%s'" % branch)
+                                        repo.create_branch(branch)
+                                    else:
+                                        gbp.log.err(no_upstream_branch_msg % branch +
+                                                    "\nAlso check the --create-missing-branches option.")
+                                        raise GbpError
+
+                            commit = repo.commit_dir(extra.unpacked,
+                                                     "Imported %s" % msg,
+                                                     branch,
+                                                     author)
+                            parents.append(( tag, commit ))
+
+                            repo.create_tag(name=tag,
+                                            msg=msg,
+                                            commit=commit,
+                                            sign=options.sign_tags,
+                                            keyid=options.keyid)
+
+                            if is_empty:
+                                repo.create_branch(upstream_branch, commit)
+                            if options.pristine_tar:
+                                repo.pristine_tar.commit(tgz, upstream_branch)
+
+                        # Move unpacked source components into base tree
+                        for item in os.listdir(extra.unpacked):
+                            shutil.move(os.path.join(extra.unpacked, item),
+                                        os.path.join(upstream.unpacked, item))
+                    finally:
+                        gbpc.RemoveTree(tmp)()
+
             if not src.native:
                 if src.diff or src.deb_tgz:
-                    apply_debian_patch(repo, upstream.unpacked, src, options,
-                                       tag)
+                    apply_debian_patch(repo, upstream.unpacked, src, options, parents)
                 else:
                     gbp.log.warn("Didn't find a diff to apply.")
             if repo.get_branch() == options.debian_branch or is_empty:

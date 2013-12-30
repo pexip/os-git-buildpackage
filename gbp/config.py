@@ -85,7 +85,7 @@ class GbpOptionParser(OptionParser):
                  'postimport'      : '',
                  'hooks'           : 'True',
                  'debian-tag'      : 'debian/%(version)s',
-                 'upstream-tag'    : 'upstream/%(version)s',
+                 'upstream-tag'    : 'upstream%(component)s/%(version)s',
                  'import-msg'      : 'Imported Upstream version %(version)s',
                  'commit-msg'      : 'Update changelog for %(version)s release',
                  'filter'          : [],

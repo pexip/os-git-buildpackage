@@ -26,7 +26,7 @@ class TestDir(unittest.TestCase):
         self.assertEqual(source.is_orig(), False)
         self.assertEqual(source.path, self.upstream_dir)
         self.assertEqual(source.unpacked, self.upstream_dir)
-        self.assertEqual(source.guess_version(), ('test', '1.0'))
+        self.assertEqual(source.guess_version(), ('test', '1.0', ''))
 
     def tearDown(self):
         context.teardown()

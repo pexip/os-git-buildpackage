@@ -193,7 +193,7 @@ class UpstreamSource(object):
     def path(self):
         return self._path.rstrip('/')
 
-    def unpack(self, dir, filters=[]):
+    def unpack(self, dir, filters=[], strip_toplevel=True):
         """
         Unpack packed upstream sources into a given directory
         and determine the toplevel of the source tree.
@@ -208,7 +208,10 @@ class UpstreamSource(object):
             raise GbpError("Filters must be a list")
 
         self._unpack_archive(dir, filters)
-        self.unpacked = self._unpacked_toplevel(dir)
+        if strip_toplevel:
+            self.unpacked = self._unpacked_toplevel(dir)
+        else:
+            self.unpacked = dir
 
     def _unpack_archive(self, dir, filters):
         """
@@ -286,37 +289,39 @@ class UpstreamSource(object):
 
     def guess_version(self, extra_regex=r''):
         """
-        Guess the package name and version from the filename of an upstream
-        archive.
+        Guess the package name, version and component from the filename 
+        of an upstream archive.
 
         @param extra_regex: extra regular expression to check
         @type extra_regex: raw C{string}
 
         >>> UpstreamSource('foo-bar_0.2.orig.tar.gz').guess_version()
-        ('foo-bar', '0.2')
+        ('foo-bar', '0.2', '')
         >>> UpstreamSource('foo-Bar_0.2.orig.tar.gz').guess_version()
         >>> UpstreamSource('git-bar-0.2.tar.gz').guess_version()
-        ('git-bar', '0.2')
+        ('git-bar', '0.2', '')
         >>> UpstreamSource('git-bar-0.2-rc1.tar.gz').guess_version()
-        ('git-bar', '0.2-rc1')
+        ('git-bar', '0.2-rc1', '')
         >>> UpstreamSource('git-bar-0.2:~-rc1.tar.gz').guess_version()
-        ('git-bar', '0.2:~-rc1')
+        ('git-bar', '0.2:~-rc1', '')
         >>> UpstreamSource('git-Bar-0A2d:rc1.tar.bz2').guess_version()
-        ('git-Bar', '0A2d:rc1')
+        ('git-Bar', '0A2d:rc1', '')
         >>> UpstreamSource('git-1.tar.bz2').guess_version()
-        ('git', '1')
+        ('git', '1', '')
         >>> UpstreamSource('kvm_87+dfsg.orig.tar.gz').guess_version()
-        ('kvm', '87+dfsg')
+        ('kvm', '87+dfsg', '')
         >>> UpstreamSource('foo-Bar_0.2.orig.tar.gz').guess_version()
         >>> UpstreamSource('foo-Bar-a.b.tar.gz').guess_version()
         >>> UpstreamSource('foo-bar_0.2.orig.tar.xz').guess_version()
-        ('foo-bar', '0.2')
+        ('foo-bar', '0.2', '')
         >>> UpstreamSource('foo-bar_0.2.orig.tar.lzma').guess_version()
-        ('foo-bar', '0.2')
+        ('foo-bar', '0.2', '')
+        >>> UpstreamSource('foo-bar_0.2.orig-www.tar.gz').guess_version()
+        ('foo-bar', '0.2', 'www')
 
         @param extra_regex: additional regex to apply, needs a 'package' and a
                             'version' group
-        @return: (package name, version) or None.
+        @return: (package name, version, component) or None.
         @rtype: tuple
         """
         version_chars = r'[a-zA-Z\d\.\~\-\:\+]'
@@ -326,8 +331,9 @@ class UpstreamSource(object):
             extensions = r'\.tar\.(%s)' % "|".join(self.known_compressions())
 
         version_filters = map ( lambda x: x % (version_chars, extensions),
-                           ( # Debian upstream tarball: package_'<version>.orig.tar.gz'
-                             r'^(?P<package>[a-z\d\.\+\-]+)_(?P<version>%s+)\.orig%s',
+                           ( # Debian upstream tarball: 'package_<version>.orig.tar.gz'
+                             # or, with component: 'package_<version>.orig-<component>.tar.gz'
+                             r'^(?P<package>[a-z\d\.\+\-]+)_(?P<version>%s+)\.orig(-(?P<component>[a-z\d\-]+))?%s',
                              # Upstream 'package-<version>.tar.gz'
                              # or directory 'package-<version>':
                              r'^(?P<package>[a-zA-Z\d\.\+\-]+)-(?P<version>[0-9]%s*)%s'))
@@ -337,4 +343,10 @@ class UpstreamSource(object):
         for filter in version_filters:
             m = re.match(filter, os.path.basename(self.path))
             if m:
-                return (m.group('package'), m.group('version'))
+                component = ''
+                try:
+                    if m.group('component') is not None:
+                        component = m.group('component')
+                except IndexError:
+                    pass
+                return (m.group('package'), m.group('version'), component)

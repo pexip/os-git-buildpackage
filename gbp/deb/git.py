@@ -27,7 +27,7 @@ class DebianGitRepository(GitRepository):
         super(DebianGitRepository, self).__init__(path)
         self.pristine_tar = DebianPristineTar(self)
 
-    def find_version(self, format, version):
+    def find_version(self, format, version, component=''):
         """
         Check if a certain version is stored in this repo and return the SHA1
         of the related commit. That is, an annotated tag is dereferenced to the
@@ -45,12 +45,12 @@ class DebianGitRepository(GitRepository):
         @return: sha1 of the commit the tag references to
         @rtype: C{str}
         """
-        tag = self.version_to_tag(format, version)
+        tag = self.version_to_tag(format, version, component)
         legacy_tag = self._build_legacy_tag(format, version)
         if self.has_tag(tag): # new tags are injective
             # dereference to a commit object
             return self.rev_parse("%s^0" % tag)
-        elif self.has_tag(legacy_tag):
+        elif not component and self.has_tag(legacy_tag):
             out, ret = self._git_getoutput('cat-file', args=['-p', legacy_tag])
             if ret:
                 return None
@@ -75,7 +75,7 @@ class DebianGitRepository(GitRepository):
         @returns: a new debian version
         @raises GitRepositoryError: if no upstream tag was found
         """
-        pattern = upstream_tag_format % dict(version='*')
+        pattern = upstream_tag_format % dict(version='*', component='')
         tag = self.find_tag(commit, pattern=pattern)
         version = self.tag_to_version(tag, upstream_tag_format)
 
@@ -92,7 +92,7 @@ class DebianGitRepository(GitRepository):
             otherwise
         @rtype: C{Bool}
         """
-        pattern = upstream_tag_format % dict(version='*')
+        pattern = upstream_tag_format % dict(version='*', component='')
         try:
             tag = self.find_tag(commit, pattern=pattern)
         except GitRepositoryError:
@@ -110,16 +110,17 @@ class DebianGitRepository(GitRepository):
         if ':' in version: # strip of any epochs
             version = version.split(':', 1)[1]
         version = version.replace('~', '.')
-        return format % dict(version=version)
+        return format % dict(version=version, component='')
 
     @staticmethod
-    def version_to_tag(format, version):
-        """Generate a tag from a given format and a version
+    def version_to_tag(format, version, component=''):
+        """Generate a tag from a given format, version and component
 
-        >>> DebianGitRepository.version_to_tag("debian/%(version)s", "0:0~0")
+        >>> DebianGitRepository.version_to_tag("debian%(component)s/%(version)s", "0:0~0", "")
         'debian/0%0_0'
         """
-        return format % dict(version=DebianGitRepository._sanitize_version(version))
+        return format % dict(version=DebianGitRepository._sanitize_version(version),
+                             component=component)
 
     @staticmethod
     def _sanitize_version(version):
@@ -148,6 +149,7 @@ class DebianGitRepository(GitRepository):
         """
         version_re = format.replace('%(version)s',
                                     '(?P<version>[\w_%+-.]+)')
+        version_re = version_re.replace('%(component)s', '')
         r = re.match(version_re, tag)
         if r:
             version = r.group('version').replace('_', '~').replace('%', ':')

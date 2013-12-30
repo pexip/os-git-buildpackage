@@ -111,7 +111,7 @@ def ask_package_version(default, ver_validator_func, err_msg):
         gbp.log.warn("\nNot a valid upstream version: '%s'.\n%s" % (version, err_msg))
 
 
-def repacked_tarball_name(source, name, version):
+def repacked_tarball_name(source, name, version, component):
     if source.is_orig():
         # Repacked orig tarball needs a different name since there's already
         # one with that name
@@ -120,15 +120,17 @@ def repacked_tarball_name(source, name, version):
                     os.path.basename(source.path).replace(".tar", ".gbp.tar"))
     else:
         # Repacked sources or other archives get canonical name
+        if component:
+            component = '-' + component
         name = os.path.join(
                     os.path.dirname(source.path),
-                    "%s_%s.orig.tar.bz2" % (name, version))
+                    "%s_%s.orig%s.tar.bz2" % (name, version, component))
     return name
 
 
-def repack_source(source, name, version, tmpdir, filters):
+def repack_source(source, name, version, component, tmpdir, filters):
     """Repack the source tree"""
-    name = repacked_tarball_name(source, name, version)
+    name = repacked_tarball_name(source, name, version, component)
     repacked = source.pack(name, filters)
     if source.is_orig(): # the tarball was filtered on unpack
         repacked.unpacked = source.unpacked
@@ -136,6 +138,6 @@ def repack_source(source, name, version, tmpdir, filters):
         if tmpdir:
             cleanup_tmp_tree(tmpdir)
         tmpdir = tempfile.mkdtemp(dir='../')
-        repacked.unpack(tmpdir, filters)
+        repacked.unpack(tmpdir, filters, component == '')
     return (repacked, tmpdir)
 
