@@ -1,3 +1,10 @@
+git-buildpackage (0.6.8pexip5) precise; urgency=low
+
+  * Consider all known compression types when looking for
+    multiple orig tarballs.
+
+ -- John-Mark Bell <jmb@pexip.com>  Tue, 07 Jan 2014 10:24:53 +0000
+
 git-buildpackage (0.6.8pexip4) precise; urgency=low
 
   * Add support for multiple orig tarballs. Based, in part,

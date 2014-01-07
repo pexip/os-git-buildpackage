@@ -23,6 +23,7 @@ import subprocess
 import gbp.command_wrappers as gbpc
 from gbp.errors import GbpError
 from gbp.git import GitRepositoryError
+from gbp.pkg import compressor_opts
 
 # Make sure these are available with 'import gbp.deb'
 from gbp.deb.changelog import ChangeLog, NoChangeLogError
@@ -113,12 +114,14 @@ def orig_components(main, filelist):
     if not name:
         return False
 
-    m = re.search(r'^(?P<source>.+).orig.tar.(gz|bz2)', name)
+    compressions = '|'.join([ item[-1] for item in compressor_opts.itervalues() ])
+
+    m = re.search(r'^(?P<source>.+).orig.tar.(%s)' % ( compressions, ), name)
     if not m:
         return False
 
     list = {}
-    pattern = re.compile(r'%s.orig-(?P<component>[\w-]+).tar.(gz|bz2)' % (m.group('source')))
+    pattern = re.compile(r'%s.orig-(?P<component>[\w-]+).tar.(%s)' % (m.group('source'), compressions))
     for f in filelist:
         (path, name) = os.path.split(f)
         m = pattern.search(name)
