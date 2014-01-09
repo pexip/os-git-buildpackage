@@ -1,3 +1,9 @@
+git-buildpackage (0.6.8pexip6) precise; urgency=low
+
+  * Fix up testsuite to cope with PexOS.
+
+ -- John-Mark Bell <jmb@pexip.com>  Thu, 09 Jan 2014 17:03:24 +0000
+
 git-buildpackage (0.6.8pexip5) precise; urgency=low
 
   * Consider all known compression types when looking for

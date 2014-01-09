@@ -17,8 +17,8 @@ import re
 os_release = OsReleaseFile('/etc/lsb-release')
 
 # OS release codename and snapshot of version 0.9-2~1
-if os_release['DISTRIB_ID'] == 'Ubuntu':
-    os_codename = os_release['DISTRIB_CODENAME']
+if os_release['DISTRIB_ID'] in [ 'Ubuntu', 'PexOS' ]:
+    os_codename = os_release['DISTRIB_CODENAME'] if os_release['DISTRIB_ID'] == 'Ubuntu' else 'precise'
     snap_header_0_9 = r'^test-package\s\(0.9-1ubuntu1~1\.gbp([0-9a-f]{6})\)\sUNRELEASED;\surgency=low'
     new_version_0_9 = '0.9-1ubuntu1'
 else:
