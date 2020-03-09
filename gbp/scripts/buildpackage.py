@@ -186,7 +186,14 @@ def extract_orig(orig_tarball, dest_dir):
     src_dir = os.path.dirname(orig_tarball)
     for component, filename in du.orig_components(orig_tarball, os.listdir(src_dir)).iteritems():
         additional_component = UpstreamSource(filename)
-        additional_component.unpack(dest_dir, strip_toplevel=False)
+        component_dir = os.path.join(dest_dir, component)
+        additional_component.unpack(component_dir)
+
+        if additional_component.unpacked != component_dir:
+            tmpdir = component_dir + '.new'
+            os.rename(additional_component.unpacked, tmpdir)
+            os.rmdir(additional_component_dir)
+            os.rename(tmpdir, additional_component_dir)
 
 #}
 

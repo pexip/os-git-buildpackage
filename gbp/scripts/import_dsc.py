@@ -385,17 +385,30 @@ def main(argv):
             if not src.native and src.extra_tgz:
                 for tgz in src.extra_tgz:
                     tmp = os.path.abspath(tempfile.mkdtemp(dir='..'))
+                    tmp2 = os.path.abspath(tempfile.mkdtemp(dir='..'))
                     try:
-                        extra = UpstreamSource(tgz)
-                        extra.unpack(tmp, options.filters, False)
+                        # Unpack the tree to a temporary location
+                        extra0 = UpstreamSource(tgz)
+                        extra0.unpack(tmp, options.filters)
 
-                        _, _, component = extra.guess_version()
+                        # Compute the name of the component and build the actual unpacked tree
+                        _, _, component = extra0.guess_version()
+                        component_path = os.path.join(tmp2, component)
+                        os.mkdir(component_path)
+                        for item in os.listdir(extra0.unpacked):
+                            shutil.move(os.path.join(extra0.unpacked, item),
+                                        os.path.join(component_path, item))
+
+                        # Reflect the above in a fresh upstream source object
+                        extra = UpstreamSource(tgz, unpacked=tmp2)
+
                         tagcomponent = '-' + component
                         tag = repo.version_to_tag(format[0], src.upstream_version, tagcomponent)
 
                         if not repo.find_version(format[0], src.upstream_version, tagcomponent):
                             gbp.log.info("Tag %s not found, importing %s tarball" % (tag, format[1]))
                             upstream_branch = options.upstream_branch + '-' + component
+                            create_missing_branch = False
                             if is_empty:
                                 branch = None
                             else:
@@ -403,7 +416,7 @@ def main(argv):
                                 if not repo.has_branch(branch):
                                     if options.create_missing_branches:
                                         gbp.log.info("Creating missing branch '%s'" % branch)
-                                        repo.create_branch(branch)
+                                        create_missing_branch = True
                                     else:
                                         gbp.log.err(no_upstream_branch_msg % branch +
                                                     "\nAlso check the --create-missing-branches option.")
@@ -412,7 +425,7 @@ def main(argv):
                             commit = repo.commit_dir(extra.unpacked,
                                                      "Imported %s" % msg,
                                                      branch,
-                                                     {})
+                                                     create_missing_branch=create_missing_branch)
                             parents.append(( tag, commit ))
 
                             repo.create_tag(name=tag,
