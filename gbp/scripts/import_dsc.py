@@ -412,7 +412,7 @@ def main(argv):
                             commit = repo.commit_dir(extra.unpacked,
                                                      "Imported %s" % msg,
                                                      branch,
-                                                     author)
+                                                     {})
                             parents.append(( tag, commit ))
 
                             repo.create_tag(name=tag,
