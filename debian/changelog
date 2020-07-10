@@ -1,3 +1,9 @@
+git-buildpackage (0.6.8pexip7) precise; urgency=low
+
+  * Fix up coping with multiple upstream repos
+
+ -- John-Mark Bell <jmb@pexip.com>  Mon, 09 Mar 2020 17:42:16 +0000
+
 git-buildpackage (0.6.8pexip6) precise; urgency=low
 
   * Fix up testsuite to cope with PexOS.
