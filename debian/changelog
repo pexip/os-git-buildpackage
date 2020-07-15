@@ -1,3 +1,9 @@
+git-buildpackage (0.6.8pexip8) pexip; urgency=medium
+
+  * Rebuild in buster environment
+
+ -- Steve McIntyre <steve.mcintyre@pexip.com>  Wed, 15 Jul 2020 21:38:54 +0000
+
 git-buildpackage (0.6.8pexip7) precise; urgency=low
 
   * Fix up coping with multiple upstream repos
