@@ -1,6 +1,6 @@
 # vim: set fileencoding=utf-8 :
 #
-# (C) 2012 Guido Günther <agx@sigxcpu.org>
+# (C) 2012,2017 Guido Günther <agx@sigxcpu.org>
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation; either version 2 of the License, or
@@ -12,14 +12,18 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#    along with this program; if not, please see
+#    <http://www.gnu.org/licenses/>
 """Interface to uscan"""
 
-import os, re, subprocess
+import os
+import re
+import subprocess
+
 
 class UscanError(Exception):
     pass
+
 
 class Uscan(object):
     cmd = '/usr/bin/uscan'
@@ -53,7 +57,7 @@ class Uscan(object):
         >>> u._parse('')
         Traceback (most recent call last):
         ...
-        UscanError: Couldn't find 'upstream-url' in uscan output
+        gbp.deb.uscan.UscanError: Couldn't find 'upstream-url' in uscan output
         """
         source = None
         self._uptodate = False
@@ -84,7 +88,7 @@ class Uscan(object):
                     for n in ('package',
                               'upstream-version',
                               'upstream-url'):
-                        m = re.match("<%s>(.*)</%s>" % (n,n), row)
+                        m = re.match("<%s>(.*)</%s>" % (n, n), row)
                         if m:
                             d[n] = m.group(1)
                 d["ext"] = os.path.splitext(d['upstream-url'])[1]
@@ -94,10 +98,10 @@ class Uscan(object):
 
                 # Fall back to the upstream source name otherwise
                 if not os.path.exists(source):
-                    source = "../%s" % d['upstream-url'].rsplit('/',1)[1]
+                    source = "../%s" % d['upstream-url'].rsplit('/', 1)[1]
                     if not os.path.exists(source):
                         raise UscanError("Couldn't find tarball at '%s'" %
-                                     source)
+                                         source)
             except KeyError as e:
                 raise UscanError("Couldn't find '%s' in uscan output" %
                                  e.args[0])
@@ -109,13 +113,16 @@ class Uscan(object):
 
         @param out: uscan output
         @type out: string
+        @returns: C{True} if package is uptodate
 
         >>> u = Uscan('http://example.com/')
         >>> u._parse_uptodate('<status>up to date</status>')
+        True
         >>> u.tarball
         >>> u.uptodate
         True
         >>> u._parse_uptodate('')
+        False
         >>> u.tarball
         >>> u.uptodate
         False
@@ -124,6 +131,7 @@ class Uscan(object):
             self._uptodate = True
         else:
             self._uptodate = False
+        return self._uptodate
 
     def _raise_error(self, out):
         r"""
@@ -142,22 +150,22 @@ class Uscan(object):
         ... "to example.com:80 (Bad hostname)</warnings>")
         Traceback (most recent call last):
         ...
-        UscanError: Uscan failed: uscan warning: In watchfile debian/watch, reading webpage
+        gbp.deb.uscan.UscanError: Uscan failed: uscan warning: In watchfile debian/watch, reading webpage
         http://a.b/ failed: 500 Cant connect to example.com:80 (Bad hostname)
         >>> u._raise_error("<errors>uscan: Can't use --verbose if "
         ... "you're using --dehs!</errors>")
         Traceback (most recent call last):
         ...
-        UscanError: Uscan failed: uscan: Can't use --verbose if you're using --dehs!
+        gbp.deb.uscan.UscanError: Uscan failed: uscan: Can't use --verbose if you're using --dehs!
         >>> u = u._raise_error('')
         Traceback (most recent call last):
         ...
-        UscanError: Uscan failed - debug by running 'uscan --verbose'
+        gbp.deb.uscan.UscanError: Uscan failed - debug by running 'uscan --verbose'
         """
         msg = None
 
         for n in ('errors', 'warnings'):
-            m = re.search("<%s>(.*)</%s>" % (n,n), out, re.DOTALL)
+            m = re.search("<%s>(.*)</%s>" % (n, n), out, re.DOTALL)
             if m:
                 msg = "Uscan failed: %s" % m.group(1)
                 break
@@ -166,21 +174,26 @@ class Uscan(object):
             msg = "Uscan failed - debug by running 'uscan --verbose'"
         raise UscanError(msg)
 
+    def scan(self, destdir='..', download_version=None):
+        """
+        Invoke uscan to fetch a new upstream version
 
-    def scan(self, destdir='..'):
-        """Invoke uscan to fetch a new upstream version"""
-        p = subprocess.Popen(['uscan', '--symlink', '--destdir=%s' % destdir,
-                              '--dehs'],
-                             cwd=self._dir,
-                             stdout=subprocess.PIPE)
-        out = p.communicate()[0]
-        # uscan exits with 1 in case of uptodate and when an error occured.
+        @returns: C{True} if a new version was downloaded
+        """
+        cmd = ['uscan', '--symlink', '--destdir=%s' % destdir, '--dehs']
+        if download_version:
+            cmd += ['--download-debversion', download_version]
+        p = subprocess.Popen(cmd, cwd=self._dir, stdout=subprocess.PIPE)
+        out = p.communicate()[0].decode()
+        # uscan exits with 1 in case of uptodate and when an error occurred.
         # Don't fail in the uptodate case:
-        self._parse_uptodate(out)
-        if not self.uptodate:
-            if p.returncode:
-                self._raise_error(out)
-            else:
-                self._parse(out)
+        if self._parse_uptodate(out):
+            return False
+
+        if p.returncode:
+            self._raise_error(out)
+
+        self._parse(out)
+        return True
 
 # vim:et:ts=4:sw=4:et:sts=4:ai:set list listchars=tab\:»·,trail\:·:

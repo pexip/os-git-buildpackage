@@ -12,12 +12,13 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#    along with this program; if not, please see
+#    <http://www.gnu.org/licenses/>
 """Make blobs in a git repository accessible as file like objects"""
 
-import StringIO
-from  gbp.git.repository import GitRepositoryError
+import io
+from gbp.git.repository import GitRepositoryError
+
 
 class GitVfs(object):
 
@@ -27,9 +28,15 @@ class GitVfs(object):
 
         @todo: We don't support any byte ranges yet.
         """
-        def __init__(self, content):
+        def __init__(self, content, binary=False):
             self._iter = iter
-            self._data = StringIO.StringIO(content)
+            if binary:
+                self._data = io.BytesIO(content)
+            else:
+                try:
+                    self._data = io.StringIO(content.decode())
+                except UnicodeDecodeError:
+                    self._data = io.StringIO(content.decode("iso-8859-1"))
 
         def readline(self):
             return self._data.readline()
@@ -41,12 +48,16 @@ class GitVfs(object):
             return self._data.read(size)
 
         def close(self):
-            return self.close()
+            return self._data.close()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            self.close()
 
     def __init__(self, repo, committish=None):
         """
-        Access files in a unpaced Debian source package.
-
         @param repo: the git repository to act on
         @param committish: the committish to act on
         """
@@ -56,10 +67,12 @@ class GitVfs(object):
     def open(self, path, flags=None):
         flags = flags or 'r'
 
-        if flags != 'r':
-            raise NotImplementedError("Only reading supported so far")
+        for flag in flags:
+            if flag not in ['r', 't', 'b']:
+                raise NotImplementedError("Flag '%s' unsupported so far" % flag)
         try:
             return GitVfs._File(self._repo.show(
-                "%s:%s" % (self._committish, path)))
+                "%s:%s" % (self._committish, path)),
+                True if 'b' in flags else False)
         except GitRepositoryError as e:
-            raise IOError(e)
+            raise OSError(e)

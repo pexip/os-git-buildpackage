@@ -12,13 +12,14 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#    along with this program; if not, please see
+#    <http://www.gnu.org/licenses/>
 """provides git-dch helpers"""
 
 import re
 
 MAX_CHANGELOG_LINE_LENGTH = 76
+
 
 def extract_git_dch_cmds(lines, options):
     """Return a dictionary of all Git-Dch: commands found in lines.
@@ -28,7 +29,7 @@ def extract_git_dch_cmds(lines, options):
     commands = {}
     other_lines = []
     for line in lines:
-        if line.startswith('Git-Dch: '):
+        if line.startswith('Git-Dch: ') or line.startswith('Gbp-Dch: '):
             cmd = line.split(' ', 1)[1].strip().lower()
             commands[cmd] = True
         else:
@@ -46,22 +47,20 @@ def filter_ignore_rx_matches(lines, options):
         return lines
 
 
-_bug_r = r'(?:bug|issue)?\#?\s?\d+'
-_bug_re = re.compile(_bug_r, re.I)
-
 def extract_bts_cmds(lines, opts):
     """Return a dictionary of the bug tracking system commands
     contained in the the given lines.  i.e. {'closed' : [1], 'fixed':
     [3, 4]}.  Right now, this will only notice a single directive
     clause on a line.  Also return all of the lines that do not
     contain bug tracking system commands."""
-    bts_rx = re.compile(r'(?P<bts>%s):\s+%s' % (opts.meta_closes, _bug_r), re.I)
+    _bug_re = re.compile(opts.meta_closes_bugnum, re.I)
+    bts_rx = re.compile(r'(?P<bts>%s):\s+%s' % (opts.meta_closes, opts.meta_closes_bugnum), re.I)
     commands = {}
     other_lines = []
     for line in lines:
         m = bts_rx.match(line)
         if m:
-            bug_nums = [ bug.strip() for bug in _bug_re.findall(line, re.I) ]
+            bug_nums = [bug.strip() for bug in _bug_re.findall(line, re.I)]
             try:
                 commands[m.group('bts')] += bug_nums
             except KeyError:
@@ -75,9 +74,10 @@ def extract_thanks_info(lines, options):
     """Return a list of all of the Thanks: entries, and a list of all
     of the lines that do not contain Thanks: entries."""
     thanks = []
+    thanks_re = re.compile(r'thanks:\s+', re.I)
     other_lines = []
     for line in lines:
-        if line.startswith('Thanks: '):
+        if thanks_re.match(line):
             thanks.append(line.split(' ', 1)[1].strip())
         else:
             other_lines.append(line)
@@ -115,11 +115,14 @@ def format_changelog_entry(commit_info, options, last_commit=False):
     if options.idlen:
         entry[0] = '[%s] ' % commitid[0:options.idlen] + entry[0]
 
-    (bts_cmds, body) = extract_bts_cmds(body, options)
-    (thanks, body) = extract_thanks_info(body, options)
+    bts_cmds = {}
+    thanks = []
+    if options.meta:
+        (bts_cmds, body) = extract_bts_cmds(body, options)
+        (thanks, body) = extract_thanks_info(body, options)
     body = filter_ignore_rx_matches(body, options)
 
-    if 'full' in git_dch_cmds or (options.full and not 'short' in git_dch_cmds):
+    if 'full' in git_dch_cmds or (options.full and 'short' not in git_dch_cmds):
         # Add all non-blank body lines.
         entry.extend([line for line in body if line.strip()])
     if thanks:

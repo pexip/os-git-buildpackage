@@ -12,13 +12,14 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#    along with this program; if not, please see
+#    <http://www.gnu.org/licenses/>
 """Handle checkin and checkout of archives from the pristine-tar branch"""
 
-from gbp.pkg import compressor_opts
+from gbp.pkg.compressor import Compressor
 from gbp.pkg.pristinetar import PristineTar
 from gbp.deb import DebianPkgPolicy
+
 
 class DebianPristineTar(PristineTar):
     """The pristine-tar branch in a Debian git repository"""
@@ -35,15 +36,16 @@ class DebianPristineTar(PristineTar):
         @type comp_type: C{str}
         """
         if not comp_type:
-            ext = '\w\+'
+            ext = r'\w\+'
         else:
-            ext = compressor_opts[comp_type][1]
+            ext = Compressor.Exts[comp_type]
 
-        name_regexp = '%s_%s\.orig\.tar\.%s' % (package, version, ext)
+        name_regexp = r'%s_%s\.orig\.tar\.%s' % (package, version, ext)
 
         return super(DebianPristineTar, self).has_commit(name_regexp)
 
-    def checkout(self, package, version, comp_type, output_dir):
+    def checkout(self, package, version, comp_type, output_dir, component=None,
+                 quiet=False, signature=False):
         """
         Checkout the orig tarball for package I{package} of I{version} and
         compression type I{comp_type} to I{output_dir}
@@ -57,9 +59,18 @@ class DebianPristineTar(PristineTar):
         @param output_dir: the directory to put the tarball into
         @type output_dir: C{str}
         """
+        signaturefile = None
         name = DebianPkgPolicy.build_tarball_name(package,
                                                   version,
                                                   comp_type,
-                                                  output_dir)
-        super(DebianPristineTar, self).checkout(name)
-
+                                                  output_dir,
+                                                  component=component)
+        if signature:
+            signaturefile = DebianPkgPolicy.build_signature_name(package,
+                                                                 version,
+                                                                 comp_type,
+                                                                 output_dir,
+                                                                 component=component)
+        super(DebianPristineTar, self).checkout(name,
+                                                quiet=quiet,
+                                                signaturefile=signaturefile)

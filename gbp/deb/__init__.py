@@ -1,6 +1,6 @@
 # vim: set fileencoding=utf-8 :
 #
-# (C) 2006,2007,2011 Guido Günther <agx@sigxcpu.org>
+# (C) 2006,2007,2011,2017 Guido Günther <agx@sigxcpu.org>
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation; either version 2 of the License, or
@@ -12,8 +12,8 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#    along with this program; if not, please see
+#    <http://www.gnu.org/licenses/>
 """provides some debian source package related helpers"""
 
 import os
@@ -25,7 +25,27 @@ from gbp.git import GitRepositoryError
 
 # Make sure these are available with 'import gbp.deb'
 from gbp.deb.changelog import ChangeLog, NoChangeLogError
-from gbp.deb.policy import DebianPkgPolicy
+from gbp.deb.policy import DebianPkgPolicy                # noqa: F401
+
+
+Releases = ("buzz",
+            "rez",
+            "bo",
+            "hamm",
+            "slink",
+            "potato",
+            "woody",
+            "sarge",
+            "etch",
+            "lenny",
+            "squeeze",
+            "wheezy",
+            "jessie",
+            "stretch",
+            "buster",
+            "bullseye",
+            "sid")
+
 
 class DpkgCompareVersions(gbpc.Command):
     dpkg = '/usr/bin/dpkg'
@@ -38,21 +58,21 @@ class DpkgCompareVersions(gbpc.Command):
     def __call__(self, version1, version2):
         """
         Compare two package versions. Return 0 if the versions are equal, -1 1 if version1 < version2,
-        and 1 oterwise.
+        and 1 otherwise.
 
         @raises CommandExecFailed: if the version comparison fails
         """
         self.run_error = "Couldn't compare %s with %s" % (version1, version2)
-        res = self.call([ version1, 'lt', version2 ])
-        if res not in [ 0, 1 ]:
+        res = self.call([version1, 'lt', version2])
+        if res not in [0, 1]:
             if self.stderr:
                 self.run_error += ' (%s)' % self.stderr
             raise gbpc.CommandExecFailed("%s: bad return code %d" % (self.run_error, res))
         if res == 0:
             return -1
         elif res == 1:
-            res = self.call([ version1, 'gt', version2 ])
-            if res not in [ 0, 1 ]:
+            res = self.call([version1, 'gt', version2])
+            if res not in [0, 1]:
                 if self.stderr:
                     self.run_error += ' (%s)' % self.stderr
                 raise gbpc.CommandExecFailed("%s: bad return code %d" % (self.run_error, res))
@@ -79,28 +99,21 @@ def parse_changelog_repo(repo, branch, filename):
 
     return ChangeLog(repo.show(sha))
 
-def orig_file(cp, compression):
-    """
-    The name of the orig file belonging to changelog cp
-
-    >>> orig_file({'Source': 'foo', 'Upstream-Version': '1.0'}, "bzip2")
-    'foo_1.0.orig.tar.bz2'
-    >>> orig_file({'Source': 'bar', 'Upstream-Version': '0.0~git1234'}, "xz")
-    'bar_0.0~git1234.orig.tar.xz'
-    """
-    return DebianPkgPolicy.build_tarball_name(cp['Source'],
-                                              cp['Upstream-Version'],
-                                              compression)
 
 def get_arch():
     pipe = subprocess.Popen(["dpkg", "--print-architecture"], shell=False, stdout=subprocess.PIPE)
     arch = pipe.stdout.readline().strip()
-    return arch
+    return arch.decode('ascii')
 
 
 def compare_versions(version1, version2):
-    """compares to Debian versionnumbers suitable for sort()"""
+    """compares to Debian version numbers suitable for sort()"""
     return DpkgCompareVersions()(version1, version2)
 
+
+def get_vendor():
+    pipe = subprocess.Popen(["dpkg-vendor", "--query", "Vendor"], shell=False, stdout=subprocess.PIPE)
+    vendor = pipe.stdout.readline().strip()
+    return vendor.decode('ascii')
 
 # vim:et:ts=4:sw=4:et:sts=4:ai:set list listchars=tab\:»·,trail\:·:

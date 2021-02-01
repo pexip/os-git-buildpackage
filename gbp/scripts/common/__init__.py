@@ -12,6 +12,69 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#    along with this program; if not, please see
+#    <http://www.gnu.org/licenses/>
 """Parts shared between the deb and rpm commands"""
+
+import re
+import os
+import traceback
+from gbp.errors import GbpError
+from gbp.deb import DebianPkgPolicy
+from gbp.pkg import Archive
+from gbp.deb.upstreamsource import DebianAdditionalTarball
+
+
+class ExitCodes(object):
+    ok = 0,
+    failed = 1               # All other errors
+    no_value = 2             # Value does not exist (gbp config only)
+    parse_error = 3          # Failed to parse configuration file
+    uscan_up_to_date = 4     # Uscan up to date (import-orig only)
+
+
+def maybe_debug_raise():
+    if 'raise' in os.getenv("GBP_DEBUG", '').split(','):
+        raise
+
+
+def is_download(args):
+    """
+    >>> is_download(["http://foo.example.com"])
+    True
+    >>> is_download([])
+    False
+    >>> is_download(["foo-1.1.orig.tar.gz"])
+    False
+    """
+    if args and re.match("https?://", args[0]):
+        return True
+    return False
+
+
+# FIXME: this could become a method of DebianUpstreamSource
+def get_component_tarballs(name, version, tarball, components):
+    """
+    Figure out the paths to the component tarballs based on the main
+    tarball.
+    """
+    tarballs = []
+    (_, _, comp_type) = Archive.parse_filename(tarball)
+    for component in components:
+        cname = DebianPkgPolicy.build_tarball_name(name,
+                                                   version,
+                                                   comp_type,
+                                                   os.path.dirname(tarball),
+                                                   component)
+        sig = cname + '.asc'
+        if not os.path.exists(sig):
+            sig = None
+        tarballs.append(DebianAdditionalTarball(cname, component, sig=sig))
+        if not os.path.exists(cname):
+            raise GbpError("Can not find component tarball %s" % cname)
+    return tarballs
+
+
+def debug_exc(options):
+    if options.verbose:
+        traceback.print_exc()

@@ -1,6 +1,6 @@
 # vim: set fileencoding=utf-8 :
 #
-# (C) 2010 Guido Guenther <agx@sigxcpu.org>
+# (C) 2010 Guido Günther <agx@sigxcpu.org>
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation; either version 2 of the License, or
@@ -12,8 +12,8 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#    along with this program; if not, please see
+#    <http://www.gnu.org/licenses/>
 #
 """Simple colored logging classes"""
 
@@ -24,8 +24,8 @@ from logging import (DEBUG, INFO, WARNING, ERROR, CRITICAL, getLogger)
 import gbp.tristate
 
 
-COLORS = dict([('none', 0)] + zip(['black', 'red', 'green', 'yellow', 'blue',
-                                   'magenta', 'cyan', 'white'], range(30, 38)))
+COLORS = dict([('none', 0)] + list(zip(['black', 'red', 'green', 'yellow', 'blue',
+                                        'magenta', 'cyan', 'white'], range(30, 38))))
 DEFAULT_COLOR_SCHEME = {DEBUG: COLORS['green'],
                         INFO: COLORS['green'],
                         WARNING: COLORS['red'],
@@ -55,7 +55,7 @@ class GbpStreamHandler(logging.StreamHandler):
         super(GbpStreamHandler, self).__init__(stream)
         self._color = gbp.tristate.Tristate(color)
         self._color_scheme = DEFAULT_COLOR_SCHEME.copy()
-        msg_fmt = "%(color)s%(name)s:%(levelname)s: %(message)s%(coloroff)s"
+        msg_fmt = "%(color)s%(name)s:%(levelname)s:%(coloroff)s %(message)s"
         self.setFormatter(logging.Formatter(fmt=msg_fmt))
 
     def set_color(self, color):
@@ -75,7 +75,7 @@ class GbpStreamHandler(logging.StreamHandler):
         """Check if to print in color or not"""
         if self._color.is_on():
             return True
-        elif self._color.is_auto():
+        elif self._color.is_auto() and hasattr(self.stream, 'isatty'):
             in_emacs = (os.getenv("EMACS") and
                         os.getenv("INSIDE_EMACS", "").endswith(",comint"))
             return self.stream.isatty() and not in_emacs
@@ -124,23 +124,21 @@ def err(msg):
     """Logs a message with level ERROR on the GBP logger"""
     LOGGER.error(msg)
 
-def error(msg):
-    err(msg)
 
 def warn(msg):
     """Logs a message with level WARNING on the GBP logger"""
     LOGGER.warning(msg)
 
-def warning(msg):
-    warn(msg)
 
 def info(msg):
     """Logs a message with level INFO on the GBP logger"""
     LOGGER.info(msg)
 
+
 def debug(msg):
     """Logs a message with level DEBUG on the GBP logger"""
     LOGGER.debug(msg)
+
 
 def _parse_color_scheme(color_scheme=""):
     """Set logging colors"""
@@ -159,8 +157,10 @@ def _parse_color_scheme(color_scheme=""):
         except ValueError:
             try:
                 scheme[level] = COLORS[color.lower()]
-            except KeyError: pass
+            except KeyError:
+                pass
     return scheme
+
 
 def setup(color, verbose, color_scheme=""):
     """Basic logger setup"""
@@ -176,4 +176,3 @@ def setup(color, verbose, color_scheme=""):
 logging.setLoggerClass(GbpLogger)
 
 LOGGER = getLogger("gbp")
-

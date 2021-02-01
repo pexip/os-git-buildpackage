@@ -6,13 +6,12 @@ from . import context
 
 import glob
 import os
-import shutil
 import tarfile
-import tempfile
 import unittest
 import zipfile
 
 from gbp.pkg import UpstreamSource
+
 
 class TestDir(unittest.TestCase):
     def setUp(self):
@@ -30,6 +29,7 @@ class TestDir(unittest.TestCase):
 
     def tearDown(self):
         context.teardown()
+
 
 class TestTar(unittest.TestCase):
     """Test if packing tar archives works"""
@@ -60,6 +60,7 @@ class TestTar(unittest.TestCase):
         repacked = self.source.pack(target)
         self.assertEqual(repacked.is_orig(), True)
         self.assertEqual(repacked.is_dir(), False)
+        self.assertEqual(repacked.guess_version(), ('gbp', '0.1'))
         self._check_tar(repacked, ["gbp/errors.py", "gbp/__init__.py"])
 
     def test_pack_filtered(self):
@@ -90,6 +91,6 @@ class TestZip(unittest.TestCase):
         self.assertEqual(source.is_orig(), False)
         self.assertEqual(source.is_dir(), False)
         self.assertEqual(source.unpacked, None)
+        self.assertEqual(source.guess_version(), ('gbp', '0.1'))
         source.unpack(str(self.tmpdir))
         self.assertNotEqual(source.unpacked, None)
-

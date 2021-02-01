@@ -1,55 +1,88 @@
 #!/usr/bin/make
 
-MAN1S = gbp-buildpackage  \
+MAN1S = \
+        gbp               \
+        gbp-buildpackage  \
+        gbp-clone         \
+        gbp-config        \
+        gbp-create-remote-repo \
+        gbp-dch           \
+        gbp-export-orig   \
         gbp-import-dsc    \
         gbp-import-dscs   \
         gbp-import-orig   \
-        gbp-dch           \
-        gbp               \
-        gbp-pull          \
-        gbp-clone         \
+        gbp-import-ref    \
         gbp-pq            \
-        gbp-create-remote-repo
-MAN5S = gbp.conf
+        gbp-pristine-tar  \
+        gbp-pull          \
+        gbp-push          \
+        gbp-tag           \
+        gbp-buildpackage-rpm \
+        gbp-import-srpm   \
+        gbp-pq-rpm        \
+        gbp-rpm-ch        \
+        $(NULL)
+
+MAN5S = \
+	gbp.conf \
+	$(NULL)
 
 MANUAL=manual-html
-SGML_MANPAGES=$(patsubst %,%.1,$(MAN1S)) $(patsubst %,%.5,$(MAN5S))
+XML_MANPAGES=$(patsubst %,%.1,$(MAN1S)) $(patsubst %,%.5,$(MAN5S))
 POD_MANPAGES=git-pbuilder.1
-MANPAGES=$(SGML_MANPAGES) $(POD_MANPAGES)
+MANPAGES=$(XML_MANPAGES) $(POD_MANPAGES)
 VERSION_ENT=version.ent
 GBP_VERSION=../gbp/version.py
-DEB_VERSION=$(shell sed -ne 's/^gbp_version="\([.a-z0-9~]\+\)"/\1/p' $(GBP_VERSION))
+DEB_VERSION=$(shell sed -ne 's/^gbp_version\s\+=\s\+"\([.a-z0-9~-]\+\)"/\1/p' $(GBP_VERSION))
 CHANGELOG=../debian/changelog
+MAN_DATE=$(shell dpkg-parsechangelog -l ../debian/changelog -SDate | TZ=UTC LC_ALL=C date -f- +'%d %B %Y')
+IMAGES=$(wildcard images/*png)
+DEST_IMAGES=$(subst images/,$(MANUAL)/images/,$(IMAGES))
 
-all: $(MANUAL) $(MANPAGES)
+# Select docbook-to-man tool
+ifeq ($(shell which docbook2x-man), )
+	DOCBOOK_TO_MAN=docbook-to-man
+else
+	DOCBOOK_TO_MAN=docbook2x-man
+endif
 
-$(MANUAL): manual.sgml chapters/*.sgml manpages/*.sgml
-	docbook-2-html -s local $<
-	cp /usr/share/gtk-doc/data/*.png $(MANUAL)
+all: manual $(MANPAGES)
 
-# We build manpages under 'buildxref/' just to get an updated cross-reference
-# file (manpage.refs), before building the final manpages
-BUILD_MAN_XREF_PAGES=$(patsubst %,buildxref/%,$(SGML_MANPAGES))
+manual: $(MANUAL)/index.html $(DEST_IMAGES) css
 
-buildxref/%.1 buildxref/%.5: man.%.sgml manpages/%.sgml
-	docbook2man -o buildxref $<
+$(MANUAL)/index.html: manual.xml chapters/*.xml manpages/*.xml common.ent $(VERSION_ENT)
+	mkdir -p $(MANUAL)
+	xsltproc -o $(MANUAL)/ /usr/share/gtk-doc/data/gtk-doc.xsl $<
+	cp /usr/share/gtk-doc/data/*.png \
+	   /usr/share/gtk-doc/data/*.css \
+	   $(MANUAL)
 
-manpage.refs: $(BUILD_MAN_XREF_PAGES)
-	cp buildxref/$@ $@
+$(MANUAL)/gbp.pdf: manual.xml chapters/*.xml manpages/*.xml common.ent $(VERSION_ENT)
+	xsltproc -o $(MANUAL)/ /usr/share/gtk-doc/data/gtk-doc.xsl $<
 
-%.1 %.5: manpage.refs
-	docbook2man -o . man.$*.sgml
+css: $(MANUAL)/gbp.css $(MANUAL)/gbp.svg
+$(MANUAL)/gbp.css $(MANUAL)/gbp.svg: gbp.css gbp.svg
+	cp gbp.css gbp.svg $(MANUAL)/
+
+html_images: $(DEST_IMAGES)
+$(MANUAL)/images/%.png: images/%.png
+	mkdir -p $(basename $@)
+	install $< $@
+
+%.1 %.5: man.gbp.xml manpages/%.xml
+	$(DOCBOOK_TO_MAN) -o . $<
 
 git-pbuilder.1: ../bin/git-pbuilder
 	pod2man $< $@
 
-manual.sgml: $(VERSION_ENT)
+manual.xml: $(VERSION_ENT)
+
+$(GBP_VERSION): ../debian/changelog
+	cd .. && python setup.py build --help >/dev/null
 
 $(VERSION_ENT): $(GBP_VERSION)
 	echo '<!ENTITY gbp-version "$(DEB_VERSION)">' > $(VERSION_ENT)
 
 clean:
-	-rm -r manual-html/
-	-rm *.1 *.5 manpage.* $(VERSION_ENT)
-	-rm -r buildxref
-
+	-rm -r $(MANUAL)
+	-rm *.1 *.5 $(VERSION_ENT)

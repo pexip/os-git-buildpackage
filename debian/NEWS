@@ -1,3 +1,27 @@
+git-buildpackage (0.8.14) experimental; urgency=medium
+
+  gbp import-orig's --merge-mode option now defaults to 'auto' selecting
+  'replace' for 3.0 (quilt) packages and 'merge' otherwise. If you want to
+  retain the old behaviour of 'merge' please do so in gbp.conf.
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 04 Apr 2017 07:20:04 +0200
+
+git-buildpackage (0.6.26) unstable; urgency=medium
+
+  All gbp-* and git-* commands are now gone as announced in the
+  deprecation notice from June 2013. From now on only "gbp <command>" is
+  supported.
+
+ -- Guido Günther <agx@sigxcpu.org>  Mon, 27 Apr 2015 21:55:23 +0200
+
+git-buildpackage (0.6.9) unstable; urgency=medium
+
+  This version changes the default of the cleaner options from 'debuild clean'
+  to a noop ('/bin/true'). If you want to retain the old behaviour you can still
+  configure it via gbp.conf. For more details see #670624.
+
+ -- Guido Günther <agx@sigxcpu.org>  Sun, 05 Jan 2014 15:52:39 +0100
+
 git-buildpackage (0.6.0) unstable; urgency=low
 
   In order to provide a more consistent and git like interface a new gbp super
@@ -14,7 +38,7 @@ git-buildpackage (0.6.0) unstable; urgency=low
 
 git-buildpackage (0.4.61) unstable; urgency=low
 
-  In order to not override dpkg-buildpackge's defaults for 3.0 source packages
+  In order to not override dpkg-buildpackage's defaults for 3.0 source packages
   the default builder command is now "debuild -i -I" instead of "debuild
   -i\.git/ -I.git". If you want to retain the old behaviour please adjust your
   gbp.conf accordingly.

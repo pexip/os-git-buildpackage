@@ -1,6 +1,6 @@
 # vim: set fileencoding=utf-8 :
 #
-# (C) 2008, 2009, 2010 Guido Guenther <agx@sigxcpu.org>
+# (C) 2008, 2009, 2010, 2017 Guido Günther <agx@sigxcpu.org>
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation; either version 2 of the License, or
@@ -12,9 +12,9 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-"""Import multiple dsc files in one go"""
+#    along with this program; if not, please see
+#    <http://www.gnu.org/licenses/>
+"""Import multiple dsc files into Git in one go"""
 
 import glob
 import os
@@ -29,12 +29,39 @@ from gbp.scripts import import_dsc
 from gbp.config import GbpOptionParser
 import gbp.log
 
+
 class DscCompareVersions(DpkgCompareVersions):
     def __init__(self):
         DpkgCompareVersions.__init__(self)
 
     def __call__(self, dsc1, dsc2):
         return DpkgCompareVersions.__call__(self, dsc1.version, dsc2.version)
+
+
+def cmp_to_key(mycmp):
+    'Convert a cmp= function into a key= function'
+    class K(object):
+        def __init__(self, obj, *args):
+            self.obj = obj
+
+        def __lt__(self, other):
+            return mycmp(self.obj, other.obj) < 0
+
+        def __gt__(self, other):
+            return mycmp(self.obj, other.obj) > 0
+
+        def __eq__(self, other):
+            return mycmp(self.obj, other.obj) == 0
+
+        def __le__(self, other):
+            return mycmp(self.obj, other.obj) <= 0
+
+        def __ge__(self, other):
+            return mycmp(self.obj, other.obj) >= 0
+
+        def __ne__(self, other):
+            return mycmp(self.obj, other.obj) != 0
+    return K
 
 
 class GitImportDsc(object):
@@ -46,17 +73,18 @@ class GitImportDsc(object):
 
 
 def fetch_snapshots(pkg, downloaddir):
-    "Fetch snapshots using debsnap von snapshots.debian.org"
+    "Fetch snapshots using debsnap from snapshots.debian.org"
     dscs = None
 
     gbp.log.info("Downloading snapshots of '%s' to '%s'..." %
                  (pkg, downloaddir))
-    debsnap = gbpc.Command("debsnap", [ '--force', '--destdir=%s' %
-                                        (downloaddir), pkg])
+    debsnap = gbpc.Command("debsnap", ['--force', '--destdir=%s' %
+                                       (downloaddir), pkg])
     try:
-        debsnap()
-    except gbpc.CommandExecFailed:
+        debsnap(quiet=True)
+    except gbpc.CommandExecFailed as e:
         if debsnap.retcode == 2:
+            gbp.log.err(e)
             gbp.log.warn("Some packages failed to download. Continuing.")
             pass
         else:
@@ -68,25 +96,27 @@ def fetch_snapshots(pkg, downloaddir):
 
     return [os.path.join(downloaddir, dsc) for dsc in dscs]
 
+
 def set_gbp_conf_files():
     """
     Filter out all gbp.conf files that are local to the git repository and set
     GBP_CONF_FILES accordingly so gbp import-dsc will only use these.
     """
-    files = GbpOptionParser.get_config_files()
-    global_config = [ f for f in files if f.startswith('/') ]
+    global_config = GbpOptionParser.get_config_files(no_local=True)
     gbp_conf_files = ':'.join(global_config)
     os.environ['GBP_CONF_FILES'] = gbp_conf_files
     gbp.log.debug("Setting GBP_CONF_FILES to '%s'" % gbp_conf_files)
 
+
 def print_help():
-    print """Usage: gbp import-dscs [options] [gbp-import-dsc options] /path/to/dsc1 [/path/to/dsc2] ...
+    print("""Usage: gbp import-dscs [options] [gbp-import-dsc options] /path/to/dsc1 [/path/to/dsc2] ...
        gbp import-dscs --debsnap [options] [gbp-import-dsc options] package
 
 Options:
 
-    --ignore-repo-config: ignore gbp.conf in git repo
-"""
+    --debsnap:            use debsnap command to download packages
+    --ignore-repo-config  ignore gbp.conf in git repo
+""")
 
 
 def main(argv):
@@ -94,7 +124,7 @@ def main(argv):
     dscs = []
     ret = 0
     verbose = False
-    dsc_cmp = DscCompareVersions()
+    dsc_key = cmp_to_key(DscCompareVersions())
     use_debsnap = False
 
     try:
@@ -129,9 +159,9 @@ def main(argv):
 
         if use_debsnap:
             dirs['tmp'] = os.path.abspath(tempfile.mkdtemp())
-            dscs = [ DscFile.parse(f) for f in fetch_snapshots(pkg, dirs['tmp']) ]
+            dscs = [DscFile.parse(f) for f in fetch_snapshots(pkg, dirs['tmp'])]
 
-        dscs.sort(cmp=dsc_cmp)
+        dscs.sort(key=dsc_key)
         importer = GitImportDsc(import_args)
 
         try:
@@ -154,19 +184,22 @@ def main(argv):
         for dsc in dscs[1:]:
             if importer.importdsc(dsc):
                 raise GbpError("Failed to import '%s'" % dscs[0].dscfile)
-
+    except KeyboardInterrupt:
+        ret = 1
+        gbp.log.err("Interrupted. Aborting.")
     except (GbpError, gbpc.CommandExecFailed, GitRepositoryError) as err:
-        if len(err.__str__()):
+        if str(err):
             gbp.log.err(err)
         ret = 1
     finally:
-        if dirs.has_key('tmp'):
+        if 'tmp' in dirs:
             gbpc.RemoveTree(dirs['tmp'])()
         os.chdir(dirs['top'])
 
     if not ret:
         gbp.log.info('Everything imported under %s' % dirs['pkg'])
     return ret
+
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))

@@ -12,18 +12,21 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#    along with this program; if not, please see
+#    <http://www.gnu.org/licenses/>
 """provides some debian source package related helpers"""
 
 import os
+from gbp.deb import DebianPkgPolicy as Policy
 from gbp.deb.format import DebianSourceFormat
 from gbp.deb.changelog import ChangeLog
+from gbp.deb.control import Control
+
 
 class FileVfs(object):
     def __init__(self, dir):
         """
-        Access files in a unpaced Debian source package.
+        Access files in an unpacked Debian source package.
 
         @param dir: the toplevel of the source tree
         @type dir: C{str}
@@ -34,8 +37,10 @@ class FileVfs(object):
         flags = flags or 'r'
         return open(os.path.join(self._dir, path), flags)
 
+
 class DebianSourceError(Exception):
     pass
+
 
 class DebianSource(object):
     """
@@ -46,32 +51,42 @@ class DebianSource(object):
     """
     def __init__(self, vfs):
         """
-        @param vfs: a class that implemented GbpVFS interfacce or
-             a directory (which will used the DirGbpVFS class.
+        @param vfs: a class that implements L{GitVfs} interface or a directory
+            (which will use the L{FileVfs} class. The directory must be the
+            toplevel of a Debian source package.
         """
         self._changelog = None
+        self._control = None
 
-        if isinstance(vfs, basestring):
+        if isinstance(vfs, str):
             self._vfs = FileVfs(vfs)
         else:
             self._vfs = vfs
 
     def is_native(self):
         """
-        Whether this is a native debian package
+        Whether this is a native Debian package
         """
         try:
-            ff = self._vfs.open('debian/source/format')
-            f = DebianSourceFormat(ff.read())
+            with self._vfs.open('debian/source/format') as ff:
+                f = DebianSourceFormat(ff.read())
             if f.type:
                 return f.type == 'native'
-        except IOError as e:
-            pass # Fall back to changelog parsing
+        except IOError:
+            pass  # Fall back to changelog parsing
 
         try:
-            return not '-' in self.changelog.version
+            return '-' not in self.changelog.version
         except IOError as e:
             raise DebianSourceError("Failed to determine source format: %s" % e)
+
+    def is_releasable(self):
+        """
+        Check if package is releasable
+
+        Debian's current practice is to check for UNRELEASED in the distribution.
+        """
+        return self.changelog.distribution != 'UNRELEASED'
 
     @property
     def changelog(self):
@@ -80,11 +95,24 @@ class DebianSource(object):
         """
         if not self._changelog:
             try:
-                clf = self._vfs.open('debian/changelog')
-                self._changelog = ChangeLog(clf.read())
+                with self._vfs.open('debian/changelog', 'rb') as clf:
+                    self._changelog = ChangeLog(clf.read().decode('utf-8'))
             except IOError as err:
                 raise DebianSourceError('Failed to read changelog: %s' % err)
         return self._changelog
+
+    @property
+    def control(self):
+        """
+        Return the L{gbp.deb.Control}
+        """
+        if not self._control:
+            try:
+                with self._vfs.open('debian/control', 'rb') as cf:
+                    self._control = Control(cf.read().decode('utf-8'))
+            except IOError as err:
+                raise DebianSourceError('Failed to read control file: %s' % err)
+        return self._control
 
     @property
     def sourcepkg(self):
@@ -92,3 +120,43 @@ class DebianSource(object):
         The source package's name
         """
         return self.changelog['Source']
+
+    @property
+    def name(self):
+        return self.sourcepkg
+
+    @property
+    def version(self):
+        return self.changelog.version
+
+    @property
+    def upstream_version(self):
+        return self.changelog.upstream_version
+
+    @property
+    def debian_version(self):
+        return self.changelog.debian_version
+
+    def upstream_tarball_name(self, compression, component=None):
+        """
+        Possible upstream tarball name for this source package
+
+        Gives the name of the main tarball if component is None
+        """
+        if self.is_native():
+            return None
+        return Policy.build_tarball_name(self.name,
+                                         self.upstream_version,
+                                         compression=compression,
+                                         component=component)
+
+    def upstream_tarball_names(self, comp_type, components=None):
+        """
+        Possible upstream tarballs names for this source package
+
+        This includes component tarballs names.  with the given
+        component names
+        """
+        names = [self.upstream_tarball_name(comp_type)]
+        names += [self.upstream_tarball_name(comp_type, c) for c in (components or [])]
+        return names

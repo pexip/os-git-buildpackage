@@ -1,7 +1,7 @@
-#! /usr/bin/python
+#! /usr/bin/python3
 # vim: set fileencoding=utf-8 :
 #
-# (C) 2010 Guido Guenther <agx@sigxcpu.org>
+# (C) 2010 Guido Günther <agx@sigxcpu.org>
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation; either version 2 of the License, or
@@ -13,8 +13,8 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#    along with this program; if not, please see
+#    <http://www.gnu.org/licenses/>
 #
 # Simple Zeitgeist Git data source
 
@@ -48,14 +48,14 @@ else:
     try:
         CLIENT = ZeitgeistClient()
     except RuntimeError as e:
-        print "Unable to connect to Zeitgeist, won't send events. Reason: '%s'" %e
+        print("Unable to connect to Zeitgeist, won't send events. Reason: '%s'" % e)
 
 
 def get_repo():
     """Get uri of remote repository and its name"""
     repo = None
     uri = subprocess.Popen(['git', 'config', '--get', 'remote.origin.url'],
-                             stdout=subprocess.PIPE).communicate()[0]
+                           stdout=subprocess.PIPE).communicate()[0]
 
     if uri:
         uri = uri.strip().decode(sys.getfilesystemencoding())
@@ -65,7 +65,7 @@ def get_repo():
             sep = ':'
         try:
             repo = unicode(uri.rsplit(sep, 1)[1])
-        except IndexError: # no known separator
+        except IndexError:  # no known separator
             repo = uri
         repo = repo.rsplit(u'.git', 1)[0]
     return repo, uri
@@ -86,19 +86,19 @@ def main(argv):
         origin = uri
 
     subject = Subject.new_for_values(
-                uri = uri,
-                interpretation = Interpretation.DOCUMENT.TEXT_DOCUMENT.PLAIN_TEXT_DOCUMENT.SOURCE_CODE.uri,
-                manifestation = Manifestation.FILE_DATA_OBJECT.uri,
-                text = repo,
-                origin = origin)
+        uri=uri,
+        interpretation=Interpretation.DOCUMENT.TEXT_DOCUMENT.PLAIN_TEXT_DOCUMENT.SOURCE_CODE.uri,
+        manifestation=Manifestation.FILE_DATA_OBJECT.uri,
+        text=repo,
+        origin=origin)
     event = Event.new_for_values(
-                timestamp = int(time.time() * 1000),
-                interpretation = interpretation,
-                manifestation = Manifestation.USER_ACTIVITY.uri,
-                actor = "application://gitg.desktop",
-                subjects = [subject])
+        timestamp=int(time.time() * 1000),
+        interpretation=interpretation,
+        manifestation=Manifestation.USER_ACTIVITY.uri,
+        actor="application://gitg.desktop",
+        subjects=[subject])
     CLIENT.insert_event(event)
+
 
 if __name__ == '__main__':
     main(sys.argv)
-

@@ -12,12 +12,14 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#    along with this program; if not, please see
+#    <http://www.gnu.org/licenses/>
 """Parse debian/source/format"""
+
 
 class DebianSourceFormatError(Exception):
     pass
+
 
 class DebianSourceFormat(object):
     """
@@ -38,7 +40,7 @@ class DebianSourceFormat(object):
     >>> d = DebianSourceFormat("1.0 broken")
     Traceback (most recent call last):
     ...
-    DebianSourceFormatError: Cannot get source format from '1.0 broken'
+    gbp.deb.format.DebianSourceFormatError: Cannot get source format from '1.0 broken'
     """
     format_file = 'debian/source/format'
 
@@ -47,8 +49,7 @@ class DebianSourceFormat(object):
 
         self._version = parts[0]
         if len(parts) == 2:
-            if (parts[1][0] == '(' and
-                parts[1][-1] == ')'):
+            if (parts[1][0] == '(' and parts[1][-1] == ')'):
                 self._type = parts[1][1:-1]
             else:
                 raise DebianSourceFormatError("Cannot get source format from "
@@ -73,7 +74,7 @@ class DebianSourceFormat(object):
         return "%s (%s)" % (self._version, self._type)
 
     @classmethod
-    def parse_file(klass, filename):
+    def parse_file(cls, filename):
         """
         Parse debian/source/format file
 
@@ -84,7 +85,7 @@ class DebianSourceFormat(object):
 
         >>> import tempfile, os
         >>> with tempfile.NamedTemporaryFile(delete=False) as t:
-        ...    t.write("3.0 (quilt)")
+        ...    ret = t.write(b"3.0 (quilt)")
         >>> d = DebianSourceFormat.parse_file(t.name)
         >>> d.version
         '3.0'
@@ -93,10 +94,10 @@ class DebianSourceFormat(object):
         >>> os.unlink(t.name)
         """
         with open(filename) as f:
-            return klass(f.read())
+            return cls(f.read())
 
     @classmethod
-    def from_content(klass, version, type, format_file=None):
+    def from_content(cls, version, type, format_file=None):
         """
         Write a format file from I{type} and I{format} at
         I{format_file}
@@ -106,10 +107,11 @@ class DebianSourceFormat(object):
         @param format_file: the format file to create with
             the above parameters
         """
-        format_file = format_file or klass.format_file
-        with open(klass.format_file, 'w') as f:
+        format_file = format_file or cls.format_file
+        with open(cls.format_file, 'w') as f:
             f.write("%s (%s)" % (version, type))
-        return klass.parse_file(klass.format_file)
+        return cls.parse_file(cls.format_file)
+
 
 if __name__ == "__main__":
     import doctest

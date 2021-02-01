@@ -1,3 +1,2316 @@
+git-buildpackage (0.9.22) unstable; urgency=medium
+
+  [ Jochen Sprickerhof ]
+  * [1586313] Define %python_sitelib for autopkgtest.
+    The rpm package no longer defines this, instead there is python3_sitelib
+    in /usr/lib/rpm/macros.d/macros.python3 provided by the
+    python3-rpm-macros package (not in Debian).
+  * [5949fbc] autopkgtest: Set %_arch.
+    Seems to be needed on armhf. (Closes: #980256)
+  * [43ead9c] rpm: Stop decoding strings.
+    Fails with newer rpmlib
+  * [c6731c0] rpm: Open tempfile in text mode
+  * [2dc9953] rpm: Fix tags in rpm spec files.
+    Patches are named similar to sources, counting from 0.
+    https://docs.fedoraproject.org/en-US/Fedora_Draft_Documentation/0.1/html/RPM_Guide/ch09s03s04.html
+  * [8b3abc9] rpm: Fix tags in rpm spec files
+    (Closes: #980637)
+
+  [ Guido Günther ]
+  * [6391e0a] tests: Honor GBP_TESTS_NOCLEAN in rpm tests too
+  * [99af76a] d/control: Require newer rpm.  The version changed API and
+    parsing strictness in multiple places, don't try to cater for older
+    versions.
+  * [785e204] Update rpm component test submodule
+  * [9efbe12] d/control: Switch to dh-compat 13
+  * [ef79503] dh_missing: Ignore __pycache__
+  * [190b19d] d/control: Bump supported python3 version.
+    We specify current stable as a lower bound.
+  * [bb396dd] Drop maintainer scripts.
+    They were needed for the oldstable -> stable upgrade
+  * [67ce18a] manpages: Fix typo in gbp-buildpackage-rpm.1
+  * [16c23ec] stricter arch check to unbreak test on i386 in salsa-ci
+
+ -- Guido Günther <agx@sigxcpu.org>  Mon, 01 Feb 2021 09:15:22 +0100
+
+git-buildpackage (0.9.21) unstable; urgency=medium
+
+  [ Guido Günther ]
+  * [bd15730] docs: Drop --git- from dch invocation.
+    Thanks Pierre Equoy
+  * [7179893] docs: Clarify that only tarball creation is affected.
+    Thanks to Pierre Equoy
+  * [1d922d7] policy: Fix typos.
+    Thanks to Andrius Merkys (Closes: #966130)
+  * [16b8817] spec: Include the correct file
+    export_ref.py does not exist.
+  * [fd35de0] spec: Don't fail on empty cache dir
+  * [df9bae2] autopkgtest: Pass RPM macros on command line.
+    This avoids the need to modify files in the home directory.
+  * [53501b5] smoketest: Avoid writing to ..
+    Use a temporary directory to avoid 'allow-root'.
+  * [4e5fc40] autopkgtests: Depend on @builddep@
+    Otherwise gbp is not able to build itself.
+    Thanks to Lukas Märdian for the detailed report
+    (Closes: #968982)
+  * [504dda3] test_import_orig: Fix typo
+  * [c09d629] test_import_orig: Drop unused variable.
+    This makes flake8 happy
+  * [73492e1] salsa-ci: Skip reprotest.
+    It triggers a test failure since a test can write to a
+    destination it should not be able to write too.
+  * [c02938f] docs: Add example for exporting the source tree.
+    See #969952
+  * [657b005] buildpackage: Fix tests and test arch override
+  * [cc5e85b] import-ref: Fix help.
+    We want an upstream version, not  path
+  * [680e9ec] gitlab-ci: Use a more recent Ubuntu LTS
+  * [e085ab9] tests: Fixup changelog test on Ubuntu.
+    The keys in os-release differ from lsb-release
+
+  [ Marco Trevisan (Treviño) ]
+  * [9fc3f1b] import-orig: expose unpacked sources dir to the postunpack hook.
+    Use an $GBP_SOURCES_DIR to expose the post-unpack sources dir to the hook.
+    Include a test that checks that all the expected env variables are set.
+  * [297c5ff] import-orig: Allow the post-unpack hook to filter tarball files.
+    With post-unpack scripts is currently possible to filter out files that
+    are not needed from the upstream branch, however it is not possible to use it
+    to filter files that will end up in the orig file, and in some scenarios
+    this is not easily doable just using a filter list.
+    So, run the post-unpack hook just after unpacking and before repacking the
+    tar. (Closes: #812721)
+
+  [ Richard Laager ]
+  * [0f8f550] import-orig: Fix a comment typo
+  * [707ebdf] import-orig: Refactor vcs_tag_parent.
+    This eliminates an indentation level.
+  * [064834b] import-orig: Refactor vcs_tag_parent.
+    This makes the "tag" variable just the tag.  This improves the
+    human-readability of the error message if the tag cannot be found.
+
+  [ Heiko Schlittermann ]
+  * [d9e4734] buildpackage: Honor --git-arch for GBP_CHANGES_FILE
+    (Closes: #941345)
+
+  [ Chris Lamb ]
+  * [8734ed3] docs: Correct "option" typo in gbp-buildpackage manpage
+    (Closes: #972081)
+
+  [ nicoo ]
+  * [a2a3085] tests/11_test_dch_main.py: Don't expect /etc/lsb-release on
+    Debian
+  * [0916529] doctests/test_Changelog: Don't expect /etc/lsb-release
+    (Closes: #976914)
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 07 Jan 2021 11:28:00 +0100
+
+git-buildpackage (0.9.20) unstable; urgency=medium
+
+  * [e513375] doctest: Ignore exception detail.
+    We used the tests to check whether the right exception was returned but
+    python 3.8 breaks this again.  Doctest were a nice feature but keeping up
+    with the subtle breackage is too cumbersome.
+  * [3b05fa8] deb: git: Escape '.' on pristine-tar matches
+    '.' is valid in source package names and version numbers so we
+    want to match exactly that and not an arbitrary character.
+  * [74b3799] pristine-tar: Escape '+' in match regexp.
+    When looking for matching file name we need to exscape the valid '+' but
+    need to do it late since it must not be escaped for git-grep.
+    (Closes: #956103)
+  * [a3d9c98] docs: import-ref: Fix wrong --upstream-tree default
+    (Closes: #962916)
+  * [f68858e] import-orig: Print all found sources with `verbose`
+  * [111aa86] get_component_tarballs: Check for signature too
+    (Closes: #96396)
+  * [4f2569d] git: Drop another doctest that matched exception
+    type.
+  * [305a4ad] import_orig: Drop all upstream signatures with
+    --upstream-signatures=off.  This makes sure we don't use spurious files as
+    signatures
+  * [0bc42b4] Make flake8 E741 happy
+    (Closes: #964040)
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 01 Jul 2020 14:47:44 +0200
+
+git-buildpackage (0.9.19) unstable; urgency=medium
+
+  * [30cfa76] d/tests/control: Drop python-rpm. We'd need
+    python3-rpm for the build test but that is not run atm.
+  * [2159ac3] Build-Depend on pydoctor since this uses python3
+    Thanks to Boyuan Yang for the hints (Closes: #943107)
+  * [96526f2] Add salsa-ci
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 28 Feb 2020 09:48:05 +0100
+
+git-buildpackage (0.9.18) unstable; urgency=medium
+
+  [ Guido Günther ]
+  * [abe1ec7] import-orig: Recommend python3-requests.  The python2 version
+    won't do
+  * [bddd221] dch: Always print where we pick up
+  * [f8883eb] config: Be less picky about comments after boolean values.
+    This makes 'patch-numbers = False # comment' work.
+    Thanks to Mechtilde Stehmann for the report
+
+  [ Christian Göttsche ]
+  * [2f1c157] add option to export tarballs with upstream signature.
+    Add option `--upstream-signatures=[on|auto|off]` to export-orig.
+    Add option `--git-upstream-signatures=[on|auto|off]` to buildpackage.
+    (Closes: 872864)
+
+  [ Matthias Klose ]
+  * [b80027c] d/tests/control: Add xsltproc to the autopkg test dependencies
+    (Closes: #950216)
+
+ -- Guido Günther <agx@sigxcpu.org>  Mon, 17 Feb 2020 15:12:12 +0100
+
+git-buildpackage (0.9.17) unstable; urgency=medium
+
+  * [6248524] export_orig: Don't fail without a repository.
+    This is a valid use case in overlay mode
+    Thanks to Thomas Koch for the report
+  * [ff9ff7e] Use UpstreamSource for additional tarballs as well.
+    This will help on upstream tarball signatures as well as
+    improving additional tarball handling.
+  * [16781c8] import-orig: Handle tarball signature when using pristine-tar
+  * [4a97a1c] import-dsc: Import signature if present in dsc
+  * [e541f35] Recommend and build depend on pristine-tar 1.41
+    since only this version has signature support.
+  * [12ed9fb] travis-ci: Switch to bionic.
+    Need to drop python 3.4 for that since it's not available on bionic.
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 31 Oct 2019 19:15:14 +0100
+
+git-buildpackage (0.9.16) unstable; urgency=medium
+
+  * [fef81e2] pq: Don't bubble up FileNotFoundException (Closes: #940043)
+  * [fb26fd9] docs: Fix wrong argument order of branch rename.
+    Thanks to Jens Reyer (Closes: #941110)
+  * [11f9f31] export-orig: Check 'origin/pristine-tar' as well for compression
+    type (Closes: #941894)
+  * [916f538] docs: Fix typos.
+    Thanks to lintian
+  * [6cf1f7e] d/control: Bump standards version
+    no changes needed
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 22 Oct 2019 17:36:46 +0200
+
+git-buildpackage (0.9.15) unstable; urgency=medium
+
+  [ Guido Günther ]
+  * [b12b85a] import-orig: Allow to run a post unpack hook.
+    The working directory of the hook is the top temporary directory the
+    tarballs are being unpacked into.
+  * [6696656] docs: Document gbp import-orig --postunpack
+  * [292edcf] import_orig: Move upstream-vcs-tag's help to config.
+    This way it can be shared.
+  * [61757c0] import_dsc: Support upstream-vcs-tag (Closes: #782886)
+  * [1acd0bb] docs: import-dsc: Document --upstream-vcs-tag
+  * [b888349] gbp-clone: Support salsa: pseudo urls
+  * Fix flake8 errors (Closes: #939648)
+
+  [ Hideki Yamane ]
+  * [d1960b3] gbp.conf: Set default compresson to xz.
+    The value is commented out so does not have any effect but it's
+    better to recommend the right value.
+
+  [ Maximiliano Curia ]
+  * [8afb7ee] import-orig/merge_replace Avoid calling force_head.
+    The debian_merge_by_replace function ends up calling force_head, but up to
+    this point the current branch could be anything, and thus when called from
+    a feature branch the latest commits get lost.
+
+ -- Guido Günther <agx@sigxcpu.org>  Sat, 07 Sep 2019 10:58:51 -0700
+
+git-buildpackage (0.9.14) unstable; urgency=medium
+
+  [ Michael Prokop ]
+  * [4142928] docs: update examples for pristine-tar usage, requiring commit
+    action
+    (Closes: #919677)
+
+  [ Roberto C. Sánchez ]
+  * [d3f67c8] docs: Fix typo
+
+  [ Gabriel Filion ]
+  * [34b9da1] Disable PGP signatures when retrieving list of commits
+    (Closes: #923087)
+
+  [ Guido Günther ]
+  * [3e3458f] setup.py: Move version parser into setup.py.
+    This makes sure it ends up in the sdist tarball.
+
+  [ Simon McVittie ]
+  * [74669f0] Dep3Patch: Ignore MIME headers.
+    Otherwise, if we import a patch containing non-ASCII characters exported
+    by `gbp pq export` or `git format-patch` using DEP-3 syntax, we'd
+    misinterpret these fields as semantically significant and copy them into
+    pseudo-headers, causing them to be duplicated in the commit's long
+    description. (Closes: #924478)
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 21 Mar 2019 10:33:34 +0100
+
+git-buildpackage (0.9.13) unstable; urgency=medium
+
+  [ Guido Günther ]
+  * [55edef2] PatchSeries: Don't fail if there's only a patch end marker.
+    If the patch only has '---' we pass empty data to git-mail-info
+    otherwise.
+    Thanks to James Cowgill for the detailed report (Closes: #916545)
+  * [861121e] push: Push Debian branch first.
+    This makes sure in new repos this is the correct default branch.
+    (Closes: #916651)
+  * [81bfe17] rpm_ch: Escape \S in regex replacement.
+
+  [ Chris Lamb ]
+  * [b58311f] Fix typo (Closes: #914280)
+
+  [ Simon McVittie ]
+  * [cb4c916] zsh completion: Fix typo in redirection to _gbp-import-dsc
+    (Closes: #917636)
+  * [cd4c4d2] gbp-pull: Invoke gbp pq correctly for --redo-pq option
+    `gbp pull --redo-pq` assumed that `gbp-pq` exists in PATH, which isn't
+    normally true since 0.6.24 (2015). (Closes: #917637)
+
+ -- Guido Günther <agx@sigxcpu.org>  Sat, 29 Dec 2018 18:49:21 +0100
+
+git-buildpackage (0.9.12) unstable; urgency=medium
+
+  * [aa7ca25] import_ref: Fix warning output. Otherwise import-ref
+    won't load correctly.
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 11 Dec 2018 18:23:09 +0100
+
+git-buildpackage (0.9.11) unstable; urgency=medium
+
+  [ Guido Günther ]
+  * [7ce98d6] import-ref: New experimental command to merge in changes from a
+    upstream using git.
+  * [2320ac3] Add test case for conversion of extra DEP-3 headers to
+    pseudo-headers.  Currently the extra DEP-3 headers may end up as trailers
+    instead of should be pseudo-headers.
+  * [1e31e67] pq: Fix testcase.  Pseudo headers are now moved to the top of
+    the patch.
+  * [2f6a432] travisci: Test Python 3.7 as well.
+    Use the workaround from
+        https://github.com/travis-ci/travis-ci/issues/9815
+    since Python 3.7 is not yet supported by the default image.
+  * [497addc] Ignore flake8's 'W504 line break after binary operator'
+    With flake8's other warnings this doesn't make much sense since
+    indentation according to https://hg.python.org/peps/rev/3857909d7956
+    does not work. It triggers
+    - 'W503 line break before binary operator'
+    - 'E129 visually indented line with same indent as next logical line'
+    If one want to align the operators one hits
+    - 'E127 continuation line over-indented for visual indent'
+    So let's leave things as is for the moment.
+  * [6b13422] Fix flake8's W605 (invalid escape sequence)
+    See also
+        https://docs.python.org/3/whatsnew/3.6.html#deprecated-python-behavior
+  * [caa586a] builpackage-rpm: Use GBP_TMP_DIR instead of GBP_BUILD_DIR.
+    This is consistent with --git-post-export and unbreaks
+        tests/component/rpm/test_buildpackage_rpm.py:TestGbpRpm.test_hook_options
+  * [1994bb2] PatchSeries: Only pass patch description and header to
+    git-mailinfo. There are patches around that use
+      Content-Transfer-Encoding: base64
+    but the actual patch after '---' is unencoded ascii resulting in garbage
+    after the patch description when imported into a patch queue.
+    Since we're discarding the patch part of git-mailinfo anyway don't pass
+    this on in the first place. (Closes: #912426)
+  * [a55d19f] PristineTar: detect signature verification support
+  * [dacca59] PristineTar: support checking in/out upstream signatures
+  * [ad904b8] PristienTar: Properly detect signature feature
+  * [0277c54] PristineTar: Don't fail if pristine-tar doesn't support
+    signatures
+  * [4a8908c] Make it simple to print exception details
+  * [f932338] import-orig: rename sourcepackage to name
+    since it's the source package's name
+
+  [ Mathieu Parent ]
+  * [03accd2] import-orig: Allow one to import the requested version with
+    --uscan (Closes: #741148)
+
+  [ Ben Hutchings ]
+  * [771114b] Add test case for bug #905934
+  * [0304fd3] pq import: Look for DEP-3 header fields even if git mailimport
+    succeeds (Closes: #905934)
+  * [47cf4c6] pq import: Always put DEP-3 headers as pseudo-headers.  If there
+    are any non-git DEP-3 header fields, put them at the top of the body text,
+    regardless of whether Description or Subject is used.  Also put a blank
+    line between them and the rest of the message body.
+  
+  [ Markus Lehtonen ]
+  * [8428343] gbp.git: fix doctest with recent python-dateutil.
+    Traceback format has changed in recent python-dateutil.
+  * [a656995] tests: small fix for import-orig-rpm component test.
+    Merge behaviour in newer git versions (> v2.16) is slightly different.
+
+  [ Andreas Beckmann ]
+  * [12574cc] debian.source: Enumerate components only once
+  * [a596206] PkgPolicy.symlink_orig: also remove dangling symlinks
+
+  [ Luca Boccassi ]
+  * [ce6b1e7] buildpackage{,-rpm}: add preexport hook.
+    Sometimes it is necessary to perform operations before preparing the
+    tarballs and exporting to the build directory.
+    One such case is when having to handle extremely large binary assets in
+    the orig tarball and at the same time complex packaging code, which makes
+    it desirable to separate the two into different repositories for easier
+    handling.
+    A pre-export hook allows one to ensure that the tarball repository is
+    present and checked out at the correct branch. (Closes: #909266)
+  * [44acc6d] Refresh tests data submodule
+  * [e5aedb1] buildpackage, export-orig: support version substitution for
+    --git-tarball-dir.
+    Add support for passing %(version), %(hversion) and %(version%A%B) in
+    buildpackage --git-tarball-dir and export-orig --tarball-dir.
+    (Closes: #909266)
+
+  [ Kiss György ]
+  * [7bba657] setup.py: Fix version parsing when installing from pip.
+
+  [ Arnaud Rebillout ]
+  * [f0cb11d] docs: update references from <http://dep.debian.net> to
+    <https://dep-team.pages.debian.net>.
+
+  [ Chris Lamb ]
+  * [9dc9f5e] Fix "was build" typos (Closes: #916044)
+
+  [ Ken Dreyer ]
+  * [f6096ed] gbp.deb: Correct "otherwise" spelling in comment
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 11 Dec 2018 10:39:43 +0100
+
+git-buildpackage (0.9.10) unstable; urgency=medium
+
+  [ Ken Dreyer ]
+  * [f0b1bbe] deb.git: fix duplicate "tarball" in docstring.
+    Fix the docstring for create_pristine_tar_commits()
+  * [29b9f2c] deb.git: fix spelling of "described" in docstring.
+    Fix the docstring for _sanitize_version() and _unsanitize_version()
+
+  [ Guido Günther ]
+  * [62e0102] push: Allow to skip upstream and debian branch and tag push.
+    Push of tag and or branch can be skipped by setting
+    --{upstream,debian}-{branch,tag}='' . (Closes: #899234)
+  * [28a950a] tests: Check help output of tag and push too
+  * [a287bf6] config: allow to override default values via
+    add_config_file_option
+  * [b8221b8] pull: Check that repo is clean before fetching anything
+  * [6dda2da] pull: allow to set up branch tracking for missing branches.
+    If the remote branch does not exist at all that's currently not fatal.
+    (Closes: #882187)
+  * [d69006d] Depend on sensible-utils. gbp-dch uses sensible-editor.
+
+  [ Chris Lamb ]
+  * [6c30ac9] import-{dsc,orig}: Make --download deprecation text more useful.
+    Point to the manpages for usage examples. (Closes: #900606)
+
+  [ Guus Sliepen ]
+  * [48ef0ec] changelog: try iso8859-1 when utf-8 fails.
+    Fall back to iso8859-1 when opening the changelog. Helps when importing
+    old versions. (Closes: #900841)
+
+  [ Carsten Schoenert ]
+  * [50b9223] create_remote_repo: import urllib.parse
+    urllib.parse did not get imported in packaegs without changelog.
+
+  [ Iain Lane ]
+  * [5fedb2b] Ignore merge commits when looking at the pristine-tar branch.
+    (Closes: #906331)
+
+ -- Guido Günther <agx@sigxcpu.org>  Sun, 19 Aug 2018 08:29:47 +0200
+
+git-buildpackage (0.9.9) unstable; urgency=medium
+
+  [ Guido Günther ]
+  * [0a6e73f] Fix typos spotted by lintian
+  * [e730865] docs: options in [DEFAULT] apply to all gbp commands
+  * [3da92ba] import-orig: Better error message when vcs-tag is not found
+    (Closes: #896654)
+  * [a6ceb00] config: when printing a single value only print the value.  This
+    is more in line with what `git config` does and eases usage in scripts.
+  * [a1f4af5] docs: document how to use GBP_CONF_FILES to override
+    debian/gbp.conf
+    (Closes: #898613)
+
+  [ Ken Dreyer ]
+  * [ba32efc] bin: drop umlaut again for setuptools.
+    Setuptools cannot handle non-ascii characters in files declared in
+    "scripts". See https://github.com/pypa/setuptools/issues/761
+
+ -- Guido Günther <agx@sigxcpu.org>  Mon, 21 May 2018 13:27:17 +0200
+
+git-buildpackage (0.9.8) unstable; urgency=medium
+
+  [ Guido Günther ]
+  * [c5b5d4f] Bump standards version
+  * [5f2120b] gbplogtaster: capture INFO and DEBUG log levels too.
+    This allows one to test for certain features more easily and to use it not
+    only in the error case.
+  * [e9942bd] docs: add export-orig to list of available commands
+  * [23874c2] 8bit Guido
+  * [5301692] Move rollback code out of import_orig so it can be reused in
+    'gbp import-ref'
+  * [99b3811] RollbackDebianGitRepository: quote refs for readability
+  * [29eafbc] Makefile: Run tests verbosely by default so we see which test
+    fails / is skipped right away
+
+  [ Markus Lehtonen ]
+  * [f1b878c,042f422] tests: enable unittests without devscripts.
+    Add some additional skipIf statements, checking for the existence of the
+    debchange tool. Makes it possible to run unit tests in an environment that
+    doesn't have devscripts installed.
+
+  [ Simon McVittie ]
+  * [c159d0b] pq export: Write out patches as UTF-8 if necessary.
+    Due to behaviour changes in Python, 'gbp pq export' would previously
+    write the commit message in the base64 Content-Transfer-Encoding, which
+    is not very readable. Now it uses 8bit.
+    Based on a patch from Carlos Maddela. (Closes: #883541)
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 03 Apr 2018 13:06:47 +0200
+
+git-buildpackage (0.9.7) unstable; urgency=medium
+
+  [ Guido Günther ]
+  * [d686024] deb.source: Fix class names in doc string.
+    Thanks to Nish Aravamudan
+  * [e36592d] gbp.conf: clarify environment variables.
+    Thanks to Nish Aravamudan
+  * [74ca1fa] Enable Python3.4 in travis
+  * [c782a29] Fix typo in env var names.
+    Thanks to Nish Aravamudan for pointing this out
+  * [17914a9] docs: Although imported trees are important we mean the former.
+    Fix typo. Thanks to Ferenc Wágner (Closes: #887499)
+  * [e1aacbb] push: allow to push from detached heads
+  * [6903232] buildpackage: look at builder as well when determining the
+    changes file name
+    (Closes: #887779)
+  * [da84b60] config: strip '.py' suffix from commands.
+    This makes sure we parse config sections correctly even when running from
+    the source tree like: PYTHONPATH=. python3 "gbp/scripts/dch.py"
+  * [362f793] docs: document pq export --commit
+  * [3576ee8] tests: build docs too.
+    When running in travis build the docs too to catch errors there as well.
+  * [a708096] docs: fix section names for defaults.
+    Thanks to Christoph Berg (Closes: #888415)
+
+  [ rubicks ]
+  * [f1694df] Rework docker script to allow to build packages as well.
+
+  [ Markus Lehtonen ]
+  * [4868442] gbp.git: Python 3.4 compatibility
+  * [c8dbfe1] pq-rpm: implement --drop option.
+    Counterpart for the --drop option of gbp-pq.
+  * [5e9ab95] docs: dynamically select the DocBook-to-man tool to use to ease
+    building on other distros.
+  * [3011490] dch: implement postedit hooks.
+    Add new --postedit command line option for defining a custom hook that
+    will be run after changes to the changelog file has been finalized.
+  * [5a8bbe9] debian/gbp.conf: dch hook to automatically update version in
+    spec file.
+  * [c3e1beb] rpm packaging: update build deps of docs.  Needed after docs
+    were changed to xml.
+  * [fb9cf84] import-srpm: change commit message of native sources.  Include
+    the full package version in the commit message for native packages.
+  * [cb5754b] tests: add more tagging tests for import-srpm
+  * [972db70] import-srpm: implement --skip-packaging-tag option.
+    Corresponding the --skip-debian-tag options of import-dsc.
+  * [8515181] import-srpm: support --upstream-vcs-tag cmdline option.
+    Similar to what the option does in gbp import-orig.
+  * [d8ed8bd] gbp-pull: implement --all cmdline option.
+    This updates all remote-tracking branches (for the remote that is fetched
+    from) whose local branch name is identical to the remote branch name.
+  * [393edba] buildpackage-rpm: support setting the 'VCS:' tag in spec.
+
+ -- Guido Günther <agx@sigxcpu.org>  Mon, 29 Jan 2018 10:46:01 +0100
+
+git-buildpackage (0.9.6) unstable; urgency=medium
+
+  * [89495f7] patch_series: Properly chain up to parent class.
+    Insted of duplicating the logic use the parent classes _read_info.
+  * [28838b9] patch_series: don't read dep3 info multiple times
+  * [7b0660a] patch_series: Remove duplicate functions.
+    No need to repeat them in Dep3Patch since the parent class Patch already
+    has them.
+  * [0730a57] patch_series: Don't fail on decoding errors when looking for
+    DEP3 headers
+    (Closes: #885929)
+  * [6979250] export-orig: fix --upstream-branch argument name in manpage
+
+ -- Guido Günther <agx@sigxcpu.org>  Sat, 06 Jan 2018 20:43:18 +0100
+
+git-buildpackage (0.9.5) unstable; urgency=medium
+
+  [ Guido Günther ]
+  * [6b43cfe] docs: gbp.conf: bring back section names.
+    These got lost in f6e360f6ca0b4e3b510f82546a1daada592b18b6.
+  * [d7739b8] docs: gbp: mention push and tag
+  * [3cbdc3a] docs: gbp-buildpackage: clarify --git-no-create-orig
+  * [7bb8758] docs: gbp-buildpackage: list hooks in execution order
+  * [59f82d8] docs: gbp-buildpackage: clarify hook working directories
+  * [22d40a4] hooks: print hook name prior to execution.
+    This makes it simpler to identify build steps
+  * [56d630b] pristine-tar: print upstream version number on import.
+    Printing the debian version might be confusing
+  * [06bbc70] Fix complaints of flake8 3.5
+  * [e51358f] docs: drop duplicate "you can"
+    Thanks to Ludovic Rousseau
+  * [5aaec4f] Typo fixes.
+    Thanks to Ludovic Rousseau
+  * [4312e54] docs: Add ids to all sections
+    so we get nicer link names
+  * [13cd3b4] Handle KeyboardInterrupt in pristine_tar, push, rpm_ch and tag
+    to avoid python exceptions on the console. The other commands handle it
+    already.
+
+  [ Markus Lehtonen ]
+  * [f50069a] rpm packaging: update dependency on rpm-build.
+    Most RPM-based distribution now support weak dependencies. Make rpm-build
+    a weak dependency as it's not strictly needed by buildpackage-rpm: in
+    Fedora people probably use 'mock' and in openSUSE they use 'osc' for
+    building packages, for example.
+  * [3661127] create_remote_repo: fix typo
+  * [d9a5319] rpm.SpecFile: support %autosetup.
+    Try to do "the right thing" when %autosetup macro is used in the spec
+    file. That is, do not examine/manage %patch macros at all, but, assume
+    that patches are handled by %autosetup which was introduced in RPM
+    v4.11.
+
+  [ Maximiliano Curia ]
+  * [17a471d] pq: Parse DEP3 headers.
+    (Closes: #785274)
+
+  [ Chris West (Faux) ]
+  * [3003d07] docs: pq: Document how DEP3 headers are parsed and added to the
+    commit message.
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 29 Dec 2017 20:17:01 +0100
+
+git-buildpackage (0.9.4) unstable; urgency=medium
+
+  * [868e8ae] Bump standards version
+  * [5c078f7] docs: Add --git-overlay to synopsis
+  * [015f1a7] import-orig: use separate exit code when uscan did not find
+    anything new
+  * [45a0652] dch: Create changelog if missing.
+    Thanks to Daniel Dehennin for the groundwork on this (Closes: #669171)
+  * [c90cb78] git-pbuilder: properly escape -? (Closes: #882984)
+  * gbp-try-ff improvements
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 28 Nov 2017 12:32:01 +0100
+
+git-buildpackage (0.9.3) unstable; urgency=medium
+
+  * [9a2c5e6] import_orig: drop debian/ again in --merge-mode=replace.
+    Another fallout of the Python3 conversion.
+    Thanks to Víctor Cuadrado Juan for providing a nice reproducer
+    (Closes: #881750)
+  * [876ebb3] git-pbuilder: handle --help (Closes: #734862)
+  * [ff03bec] GitRepository: require an exact ref path when looking for
+    branches. Otherwise we might match on
+       refs/heads/refs/heads/foo instead of refs/heads/foo
+    when looking for  branch named 'foo' (Closes: #813298)
+  * [3b5a7dd] changelog: handle comma in maintainers name.
+    Thanks to Andreas Beckmann for the proposed fix (Closes: #737623)
+  * [e74b40a] rpm: conditionally check for librpm flags.  Not all of them are
+    in newer librpm and this way we can add new ones as needed as well.
+    This unbreaks the tests with new python3-rpm in sid.
+  * [c429d97] dch: make --auto the default.  The current default mode of
+    looking at the version in the changelog only leads to problems when people
+    build up the changelog incrementally.  --auto handles this since many
+    years so make this the default. There's still --since for finer control
+    where to start from. (Closes: #880552, #552624)
+  * [43d5587] docs: better explain dch operation (also addresses #880552)
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 15 Nov 2017 15:33:20 +0100
+
+git-buildpackage (0.9.2) unstable; urgency=medium
+
+  [ Guido Günther ]
+  * [5b05ead] push: Don't abort on first failure.  Push as many refs as
+    possible instead of aborting on the first error.
+  * Unbreak running in non-UTF8 locales
+    Thanks to Nico Schlömer for the report (Closes: #880964)
+  * [5b1614d] travis: run tests under C locale too
+  * [79d4340] setup.py: add python_requires so pip doesn't use the gbp module
+    for python2
+    Thanks to Nico Schlömer for the proposed solution
+  * [d656cbd] import-dsc: Fuzzy parse changelog date.
+    Especially older changelogs aren't 100% policy conformant (e.g. using a
+    localized day of week like).  This allows us to better import older
+    histories. (Closes: #880878)
+  * [577ca32] import-orig: Run postimport hook on all successful imports.
+    So far we would skip it on initial imports which is pointless.
+  * [7d6f61a] import-orig: don't fail when importing unpacked dirs.
+  * [34b2390] import-orig: avoid master branch when importing into empty repo.
+    We don't want a master branch if debian-branch != 'master'.
+  * [c135ad4] Make import-orig-rpm tests work with import-orig.
+    We use the Debian version to import RPMs since there's currently no
+    separate import-orig-rpm needed.  The tests also cover cases we were
+    currently not testing in components/deb/test_import_orig.py.
+  * [fe0022b] import-dsc: cleanup temp dirs on unexpected exceptions too
+  * [486cbfd] examples: drop gbp-posttag-push.  We have "gbp push" now.
+  * [3efd339] examples: Add gbp-try-ff.  Helper to fetch new upstream source,
+    refresh patches and do a test build.
+  * [1b5a344] buildpackage: Add back --git-pristine-tar-commit support.
+    The call got lost when we split out export-orig. (Closes: #880624)
+  * [4378eae] command_wrapper: quote error strings so we don't accidentally
+    try to expand values in error messages. (Closes: #881254)
+  * [e5df7d0] buildpackage: unpack additional tarballs as well in
+    --git-overlay mode. (Closes: #881253)
+  * [75273ee,53c0e7c] buildpackage: Expand --git-comp-type auto again in
+    --git-overlay mode.
+    Thanks to Maximiliano Curia for the detailed analysis (Closes: #879781)
+  * [d9fb2df] import-dsc: Apply filters on debian tarballs too
+    (Closes: #881311)
+  * Several testsuite and documentation improvements
+
+  [ Felipe Sateler ]
+  * [7f85a0d] zsh: Fix delegation of dscs options to dsc
+  * [9d276b5] zsh: dch does not use git prefix for ignore-branch option
+    (Closes: #787005)
+
+  [ Ken Dreyer ]
+  * [3d084fd] DebianChangelog: Strip trailing newlines from changes.
+    Python3's message_from_string passes on a trailing newline from
+    dpkg-parsechangelog but the consumer of the output shouldn't need to
+    bother.
+
+  [ Markus Lehtonen ]
+  * [34c22d4] tests: add tests for gbp import-orig-rpm.
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 10 Nov 2017 08:08:25 +0100
+
+git-buildpackage (0.9.1) unstable; urgency=medium
+
+  * Kill use of six.*
+  * Add gbp import-dsc hook for pk4.
+    Can be enabled via
+        mkdir -p ~/.config/pk4/hooks-enabled/unpack/
+        ln -s /usr/share/pk4/hooks-available/unpack/gbp \
+              ~/.config/pk4/hooks-enabled/unpack/
+  * [f18d6b4] import-dsc: improve error message when Debian branch does not
+    exist
+  * [01da1e6] import-dsc: make sure we don't create 'master' if not needed.
+    This way we only get the debian- and upstream-branch in empty repos and
+    not a pointless 'master' if debian-branch != master.
+    It also makes sure we don't need --create-missing-branches on empty
+    repos where it is pointless. (Closes: #750962)
+  * [cec2123] docs: Add rpm tool manpages to manual too.
+    On non-Debian platform it's sometimes cumbersome to build the manpages
+    so make sure we have them available on the web at least.
+  * [8e67334] Lock flake8 version.
+    We don't want to play catchup with new flake8 checks but rather
+    update and fix things in a controlled manner.
+  * [f1bf7c3] command_wrappers: report proper exception on bad process
+    arguments.  If subprocess.communicate raised a TypeError due to bad
+    arguments 'ret' was undefined and therefore the real error reason got
+    masked.
+    Closes parts of #879495
+  * [280f4c9] pq: kill useless use of sed. This also broke paths containing
+    spaces. Thanks to André Althaus for a proposed fix.
+  * [ca273d9] dscfile: parse out upstream signatures as well
+  * [5db9f15] dscfile: Make sure we match on additional tarballs containing
+    uppercase (Closes: #880228)
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 31 Oct 2017 12:48:53 +0100
+
+git-buildpackage (0.9.0) unstable; urgency=medium
+
+  * Upload to unstable
+  * [dbb9290,9c1bd13] README: use https, shorter URLs and add image
+  * [ce7ff21] d/control: mentions new commands in packaging description
+  * [44b4e2b] import-dsc: split import of tarballs out of main.  The current
+    logic tried to force native and non-native packages into the same code
+    path leading to hardly readable if-else-maybe code paths.
+  * [4b9789a] import-dsc: Look for pristine-tar reference by commit.  The
+    upstream branch tip is up to date at this point already but this makes
+    sure things don't get wired if we move code around.
+  * [d0ee56b] import-dsc: don't create pristine-tar commits on every import.
+    We must not create pristine-tar commits if no new upstream sources were
+    imported. Othewise we'd create them on every Debian revision.  This hardly
+    wastes space since commits are identical but does waste time.
+  * [680784b] pq: import patches before rebase if the pq branch doesn't exist
+    yet. (Closes: #876800)
+  * [c1c7fa7] pq: recommend 'rebase' and 'switch' when pq branch already
+    exists
+  * [1551051] pq: import pq branch on switch (Closes: #761166)
+  * [02978fb] pq: let drop work when pq branch is currently checked out
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 20 Oct 2017 11:41:53 +0200
+
+git-buildpackage (0.9.0~exp7) experimental; urgency=medium
+
+  * [fdf2720] Don't fail on unicode errors when importing patches.  Use
+    backslashreplace not lose data.
+  * [252c102] clone: clarify what we're looking for when using vcsgit:
+  * [4e6c4cf] command_wrappers: fix path lookups.
+    Python3 performs path lookups by itself when no path is given so remove
+    our path lookup code.
+    Thanks to Nish Aravamudan
+  * [2c7a5c5] import-orig: roll back on CTRL-C too
+  * [4761cf9] import-orig: Use gz compression when repackaging non tarball
+    filtered upstream source.  This makes it consistent with
+    export_orig:guess_comp_type when no compressor could be detected.
+  * [80189f2] create_remote_repo: another missing python3 string conversion
+  * [0259fd5] config: Don't require the command to be started from toplevel
+    dir.  At least dch, push, tag and export-orig don't require to be run from
+    the toplevel of the git repo. Make sure we pick up debian/gbp.conf
+    nevertheless.
+  * [d75fbd4] docs: Switch to docbook-xml
+    (Closes: #877322)
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 06 Oct 2017 12:03:21 +0200
+
+git-buildpackage (0.9.0~exp6) experimental; urgency=medium
+
+  * [23b334c] README.source example: fix typo.
+    Thanks to Roel van Meer
+  * [db5c670] Add tag command by splitting out the code from buildpackage
+    This is shorter than running
+         gbp buildpackage --git-tag-only
+    Closes: #797086
+  * [01ee027] bash completion: add some missing branch and file opts.
+    This unbreaks completion of options on some of the newer commands such
+    as gbp export-orig --tarball-dir=<tab>
+  * [0c6cbfa] bash completion: don't accidentally match subcommands as options.
+    We match on option first so we need to make sure we don't accidentally
+    match on subcommands. This unbreaks command completion for e.g. "gbp
+    tag"
+  * [84596ab] Unbreak dch tests with newer devscripts.
+    Due to #842468 debchange now produces shorter output omitting empty
+    blocks if there weren't any changes by the maintainer invoking
+    debchange (which is nice). So check for the matching lines in both the old
+    and new location.
+  * [6abb9e8] buildpackage: don't require debian/ prefix for --git-dist=DEP14
+    to work
+  * [d5c4804] Add id-length to gbp.conf
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 15 Sep 2017 12:51:52 +0200
+
+git-buildpackage (0.9.0~exp5) experimental; urgency=medium
+
+  * [67cdeac] push: fix option names in error output.  Only buildpackage uses
+    the '--git-' prefix
+  * [04ae7d5] git: Don't decode diff output.
+    The output can be in any encoding so assuming utf-8 is plain wrong
+  * [0f84a0d] patch_series: Make sure we close the temp file
+  * [4c6f8fc] command_wrappers: allow one to look up executables in $PATH
+  * [2ca3e37] pristine-tar: look for binary in $PATH
+    to help the Ubuntu git importer that run's pristine-tar inside a snap.
+  * [b2092c1] patch_series: don't let "git mailinfo" sanitize the subject.
+    This would strip away text in []. This improves the import/export round
+    trip. (Closes: #872354)
+  * import_orig: be more descriptive what we're "using"
+  * pq: Be clearer what '--commit' did instead of a confusing "git status".
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 08 Sep 2017 11:19:36 +0200
+
+git-buildpackage (0.9.0~exp4) experimental; urgency=medium
+
+  [ Ken Dreyer ]
+  * [0ca5283] doc: expand --git-pbuilder-options docs.
+    Give an example of how to use the --git-pbuilder-options option, and
+    explain how it interacts with git-pbuilder.
+
+  [ Guido Günther ]
+  * [b7c34cc] export-orig: drop sloppy mode from the docs since it's not
+    useful here
+  * [dab6761] import-dsc: cleanup error printing and exceptions.
+    Raise exceptions with the error message instead of printing these first.
+  * [a7b96a7] export-orig: print absolute path of created tarball.
+    To avoid paths like '/a/b/../c'
+  * [d5c3101] config: make dch-opt a list option.
+    This unbreaks dch-opt when used in gbp.conf (Closes: #872141)
+  * [5032688] spawn_dch: fail if dch failed.  We pass quiet=True to avoid
+    duplicate error messages
+  * [40b1883] gbp.conf: drop --noconf since it needs to be dch's first option
+  * [ec643d9] Revert "buildpackage: don't prepare any tarballs in overlay mode"
+    This breaks workflows where people have a detached debian/ dir
+    but keep upstream VCS and pristine-tar in the same repo.
+    This reverts commit 3e4e7950d2b0e81a8821f60e9a6d842c88e8b7fb.
+    Thanks to Maximiliano Curia for the report
+  * [d76834c] pq: use more gittish commit message in --commit.  Use present
+    instead of past tense
+  * [5d40d44] pq-rpm: Correctly pass abbrev to format-patch
+    broken by 75e18fc5bb4831df924bc708130b0a6ab311a230
+  * [b23e958] tests: remove duplication in test options
+  * [f8714dc] log: don't color the log message, only the marker
+    to improve readability
+  * [40acd04] tests: Move pristine-tar test data to tests/data as well
+  * [19310dc] Spell pristine_tar consistently
+  * [9dc2129] pq: properly retry non-ascii charset on patch body encode.
+    The current code tried to catch the wrong exception
+  * [6d3e34c] patch_series: report decoding errors when reading patch files
+
+  [ mci156 ]
+  * [d115b67] docs: Add paragraph break
+  * [e5be602] docs: Explain the v1.0 <starting point> (Closes: #872524)
+
+  [ Chris Lamb ]
+  * [f97b910] pq: make --abbrev= configurable (Closes: #872351)
+
+ -- Guido Günther <agx@sigxcpu.org>  Sun, 27 Aug 2017 17:38:19 +0200
+
+git-buildpackage (0.9.0~exp3) experimental; urgency=medium
+
+  [ Guido Günther ]
+  * [ce76320] doc: properly mark filter as repeatable in the gbp-import-dsc
+    synopsis
+  * [01a4a7f] dch: support passing arbitrary dch command line options
+    (Closes: #596513, #682854)
+  * [f208a0b] import_orig: use a more gittish commit message.
+    When replacing the debian/ dir don't used past tense and
+    keep the subject more like git-merge. (Closes: #867214)
+  * [3e4e795] buildpackage: don't prepare any tarballs in overlay mode.
+    They're not in git so we fail otherwise
+  * [66138d9] buildpackage: pass the proper tarball dir for overlays.
+    We want to look for tarballs in tarball dir (if specified) not the output
+    dir
+  * [da42f70] buildpackge: add test for overlay mode
+  * [b71a89e] export: print names of generated tarballs when using
+    pristine-tar so we get as much information as with git-archive.
+  * [3ff0fc7] pristine-tar: properly separate additional tarballs by spaces
+
+  [ Maximiliano Curia ]
+  * [a20047b] export_source: replace orig_file with
+    source.upstream_tarball_name orig_file was dropped in
+    8edd16022d75967a8fe54ef99a0733400a287bc2
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 10 Aug 2017 14:57:39 -0300
+
+git-buildpackage (0.9.0~exp2) experimental; urgency=medium
+
+  [ Guido Günther ]
+  * [cbacdfb] push: new command to push changes in one go (Closes: #733639)
+  * [3d4d011] export-orig: fix manpage example
+  * [2320e19] pq: don't create empty pq branch on rebase and switch.  We
+    always want to start from an imported series.
+    Thanks to Chris Lamb for the reproducer
+  * [c4bc656] pq: don't eagerly encode email headers.
+    Python3 changed behaviour and does not try us-ascii before the given
+    encoding so open code this in pq to avoid patch churn due to changed email
+    header encodings.
+  * [48076da] docs: expand the working with patches section
+  * [fb2e083] docs: drop the section about how to unapply patches
+    dpkg since 1.16.5 does this automatically and even oldoldstable has this
+    version.
+  * [f8c429f] docs: add images to explain pq workflow
+  * [5b3fcd6] docs: spell debian-branch consistently
+  * [f145e1d] docs: drop trailing '>' from xrefs
+  * [698e7bf] docs: add some more explanations
+    after feedback from Chris Lamb.
+  * [705f571] docs: Fix allow(s) one to spelling.
+    Thanks to lintian
+  * [4bad3c5] d/manpages: drop unused file
+  * [a5f22cb] Bump standards version
+
+  [ Chris Lamb ]
+  * [7cbe658] Correct "allow to" typos.
+  * [dff2864] Use build profiles to avoid unconditional installation of test
+    dependencies.
+
+  [ Maximiliano Curia ]
+  * [b7455ad] find_version: add a missing decode _git_getoutput returns a list
+    of bytes, that we need to decode
+
+ -- Guido Günther <agx@sigxcpu.org>  Sun, 06 Aug 2017 22:55:10 -0300
+
+git-buildpackage (0.9.0~exp1) experimental; urgency=medium
+
+  [ Guido Günther ]
+  * User visible changes:
+    * [ae7ed14] export-orig: new command to export orig tarballs from git
+      (Closes: #840089)
+    * [d9b535e] Use python3-notify2.
+      Thanks to Alexandre Detiste (Closes: #870595)
+    * [cfd884f] pristine-tar: don't print checkout errors twice
+      similar to f1c3a6f4dc6ceee5be5d49b4d193da8fd36c8920
+    * [76f247e] pristine_tar_verify_origs: skip verification if pristine-tar
+      does not support it.
+      This allows us to run with pristine-tar << 1.35
+    * [961723e] docs: generate version.py if missing.
+      This makes doc builds succeed in a clean tree.
+    * [4424008] bin: drop umlaut to make setuptools happy
+    * [e7bbd65] gbp-buildpackage: Group manpage options (Closes: #824801)
+    * [ad3515a] buildpackage: drop the long deprecated --dont-purge option.
+      Use --no-purge instead
+  * Lots of internal changes to make tarball generation simpler and avoid
+    code duplication between export-orig and build-package
+
+  [ Ken Dreyer ]
+  * [e5132b1] docs: fix spelling of "sure"
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 04 Aug 2017 20:48:22 -0300
+
+git-buildpackage (0.9.0~exp0) experimental; urgency=medium
+
+  * Switch to python3 (Closes: #810854)
+  * [889cf65] Use pydoctor to generate apidocs since epydoc
+    does not work with python3 files
+  * [6d8f386] spec: switch to python3 packaging for rpm
+    and adjust the smoketest accordingly
+  * [6b326e2] pristine-tar: add feature detection
+    so we can run tests with older pristine-tar not supporting verify
+  * [f4574be] travis: run test with different python versions and run at least
+    parts of the tests outside the container
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 02 Aug 2017 15:32:46 -0300
+
+git-buildpackage (0.8.18) unstable; urgency=medium
+
+  [ Guido Günther ]
+  * [4e6dd9c] Use install_requirements for dateutil to make using gbp in
+    virtualenv simpler
+    Thanks: Ken Dreyer
+  * [0388f9e] import-orig: Always raise an error if we find <error/> or
+    <warning/> when invoking uscan.
+    Older uscan does not abort with a non-zero exit status when it e.g. fails
+    to verify gpg signatures. So abort when we find a warning or error. (See
+    #841910 for reference).
+  * [561286d] Devscripts 2.17.7 properly exits on gpg signature validation
+    errors. So revert the above and depend on a fixed version. We keep the
+    above for reference since this is the right thing to do with older
+    uscan (e.g. in backports).
+  * [9fc1774] import-dscs: don't use long gone log function (Closes: #868733)
+  * [aaee8bb] tests: add initial component test for import-dscs
+  * [62ab1eb] tests: properly restore import_dscs so later testcases don't
+    break
+
+  [ Christos Trochalakis ]
+  * [61f4625] dch: unmangle upstream_tag when guessing upstream version.
+    Running `gbp dch` with a mangled upstream tag resulted in a KeyError while
+    trying to build a tag pattern.
+
+ -- Guido Günther <agx@sigxcpu.org>  Mon, 31 Jul 2017 18:06:21 -0300
+
+git-buildpackage (0.8.17) unstable; urgency=medium
+
+  * [0b4a348] imort-dsc: Allow for shorter apt: pseudo URLs instead of the
+    apt:/// scheme.
+  * [021fe9d] git-pbuilder: drop environment variables that passed in our
+    config.  We don't want to pass them on to pdebuild since this can trip up
+    the invoked build system.
+  * [b70d859] Fix typos in comments
+  * [d022623] pq_rpm: clarify doc string
+    mention RPM and start with a capital letter to make
+        gbp --list-cmds
+    output consistent.
+  * [956982c] New command 'pristine-tar'
+    This allows one to run the pristine-tar import at a later point.  This
+    is useful when using component tarballs and we need to reference the
+    right trees for the commits.
+  * [f1c3a6f] DebianGitRepository: better pristine-tar errors.
+    We should not raise CommandErrors from methods on a GitRepository so
+    convert the error and suppress the output. This will make us use the
+    handler for GitRepositoryError in import_orig and pristine_tar which
+    default to printing the error message. (Closes: #829252)
+  * [f1e9d85] Don't print debsnap errors twice (Closes: #851128)
+  * [7fd6ba1] docs: merge histories when importing.
+    This is only necessary for non 3.0 (quilt) packages when not using
+    merge-mode=auto with "gbp import-orig".
+    Thanks to Sean Whitton (Closes: #864881)
+  * [f905594] docs: drop commands for ancient git versions. Even oldoldstable
+    has a more recent one.
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 28 Jun 2017 19:26:50 +0200
+
+git-buildpackage (0.8.16.1) unstable; urgency=medium
+
+  * Upload to unstable
+  * [57f2c4a] docs: simplify commands
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 22 Jun 2017 15:57:41 +0200
+
+git-buildpackage (0.8.16) experimental; urgency=medium
+
+  * [2f806bc] Update to git-pbuilder 1.48
+    incorporating the changes we made since 0.8.3
+    Thanks to Russ Allbery
+  * [8ea5d6f] Don't fail tests on older git versions.
+    There are some nuances in reflog handling.
+    Thanks to jean-christophe manciot for reporting this
+  * [be6af1e] Test that we don't fail tagging when on pq branch
+    (Closes: #863167)
+  * [20ece98] pq: Disable rename tracking to always produce 'diff' compatible
+    patches even when rename tracking is enabled in the config.
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 26 May 2017 16:28:41 +0200
+
+git-buildpackage (0.8.15) experimental; urgency=medium
+
+  [ Guido Günther ]
+  * [9fa917a] pull: give more detail about what we updated
+  * [1bf6ef4] docs: use [DEFAULT] section in import example so it also fits
+    the "gbp dch" usecase
+  * [ead7157] buildpackage: make --git-export=WC simpler to use by implying
+    --git-ignore-new --git-ignore-branch. There's no point in these safety
+    checks when we export the working copy as is.  (Closes: #822823)
+  * [1832d14] Drop long deprecated --no-dch
+  * [000f924] buildpackage: add sloppy mode to build upstream tarballs.  When
+    starting with packaging people often stumble over a mismatch between what
+    dpkg-source expects to be in the tarball and the generated tarball for
+    various reasons. Give them a way to say: "Use what I have on my current
+    debian branch" as upstream source. Also helpful for snapshot builds with
+    upstream modifications. (Closes: #861004)
+  * [1113c95] clone: Add support for pseudo protocols like vcsgit: and github:
+    to make cloning simpler (Closes: #861206)
+  * [a4667c7] dockerfile: add src uri for the gbp clone network test
+
+  [ Kevin Locke ]
+  * [a03af0d] git-pbuilder: Check $OPTIONS for --basepath.
+    Previously only the arguments were checked for --basepath.  This
+    resulted in --basepath being ignored and overridden by the default when
+    passed in --git-pbuilder-options
+    (Closes: #856263)
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 28 Apr 2017 08:36:16 +0200
+
+git-buildpackage (0.8.14) experimental; urgency=medium
+
+  * [fe821e2] GitRepository: use stdout as last resort if stderr is empty.
+    This e.g. gives:
+        GitRepositoryError: Error running git commit: On branch master
+        Untracked files:
+    	debian/
+        nothing added to commit but untracked files present
+    Instead of
+        GitRepositoryError: Error running git commit:
+  * [1dd290a] pq: unbreak --commit when patch series becomes empty.  We
+    skipped the commit when the patch series became completely empty but we
+    want to commit that change too.
+  * [75bf793] posttag-push: Use named parameter for dry_run
+  * [844e4f8] import-orig: only abort merge if it got started.
+    This isn't be the case when there are e.g. files that would be overwritten
+    by the merge in the workig copy (Closes: #859439)
+  * [3b70ad2] GitRepository: add is_in_merge()
+  * [5d414c1] buildpackage: cleaner does not default to debuild since ages
+    (Closes: #859594)
+  * [e890ce3] ipmort_orig: pick best way to import upstream tarball
+    automatically.  Add new value --merge-mode=auto that selects either
+    'replace' or 'merge' depending on the source format version.
+    (Closes: #700411)
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 12 Apr 2017 13:53:52 +0200
+
+git-buildpackage (0.8.13) experimental; urgency=medium
+
+  [ Guido Günther ]
+  * [22013ad] pq: Filter out comments from series diff.
+    When creating the delta of added and dropped pachtches ignore comment
+    lines in the series file.
+    (Closes: #852817)
+  * [8103903] import_dsc: use three slashes by default for apt URLs.
+    We don't have a host part so leave that empty. Since there very likely
+    won't be any ever accept only two slashes as well.
+  * [d904b61] Use a symlink to supercomand instead of
+    pkgresources.load_entry_point. This sp:eds up startup by a factor of 10
+    and thus makes bash completion much more responsive:
+      $ gbp buildpackge --help # entrypoints
+      real	0m0,573s
+      user	0m0,532s
+      sys	0m0,036s
+      $ gbp buildpackage --help # symlink
+      real	0m0,051s
+      user	0m0,040s
+      sys	0m0,012s
+    (Closes: #853283)
+  * [d31fb0b] On a patch-queue branch tag the corresponding debian branch
+    instead.
+    (Closes: #583938)
+  * [ac34351] import_dsc: delay pristine-tar import to the very end.
+    This makes sure we have a sane debian and upstream branch already so we
+    don't leave the repo in an inconsistent state in case of failure.
+    (Closes: #851287)
+  * [0e6e23e] Improve error message for non-native packages with broken
+    version numbers
+    (Closes: #824634)
+  * [8f93dc0] git-pbuilder: don't do set -x by default to avoid spewig on
+    stderr. Use GIT_PBUILDER_DEBUG to enable it.
+  * Test suite improvements
+  * Doc updates including some CSS improvements
+
+  [ Ben Finney ]
+  * [0fc89bc] Extract a function to clean the working tree.
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 02 Mar 2017 09:58:42 +0100
+
+git-buildpackage (0.8.12.2) unstable; urgency=medium
+
+  * [80044e1] GitRepository: shorten reflog message.
+    Thanks to Chris Lamb for the report (Closes: #854333)
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 07 Feb 2017 07:34:57 +0100
+
+git-buildpackage (0.8.12.1) unstable; urgency=medium
+
+  * Upload to unstable 
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 27 Jan 2017 14:50:30 +0100
+
+git-buildpackage (0.8.12) experimental; urgency=medium
+
+  [ Guido Günther ]
+  * [5c23d41] GitRepository: properly determine git-dir
+    instead of assuming '.git'
+    Heavily based on a patch by Markus Lehtonnen (Closes: #674015)
+  * [53b5af5] gbp dch: Allow to run from subdirectory
+  * [390d34a] git-pbuilder: print pdebuild command as executed
+    to ease debugging things like #852264
+  * Test suite improvements
+
+  [ Markus Lehtonen ]
+  * [f30bb98] buildpackage: fix exporting of working copy when .git is not a directory
+    as is the case with git submodules lately, for example
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 27 Jan 2017 14:06:33 +0100
+
+git-buildpackage (0.8.11) experimental; urgency=medium
+
+  * [8bd74df] command_wrappers: Simplify RunAtCommand
+  * [1140886] buildpackage: Don't set a compression level if unset and make
+    this the default.  This allows compressors to use the their default
+    compression level. Only applies when not using pristine-tar.
+    Thanks to Antoine Beaupré for investigating (Closes: #820846)
+  * [0fdff8e] buildpackage: Use commit instead of tree to create archive.
+    This makes sure we use the timestamps of the commit when creating the
+    tarball. Only applies when not using pristine-tar
+    Thanks to Ximin Luo for investigating (Closes: #851645)
+  * [3f4b9f8] make: Check if we can use parallel flake
+  * [534c055] git-pbuilder: Don't remove changes file (Closes: #850478)
+  * [b863399] pull: Allow to specify remote on the command line
+    (Closes: #851844)
+  * [d3cb4db] gbp-posttag-push: add missing dry-run for debian branch push
+  * [f9a7640] buildpackage: verify generated tarballs when using pristine-tar
+  * [b8ea662] pq: Hardcode commit abbrev to 7 when exporting patches.
+    This avoids path churn with git >= 2.11.0 (Closes: #848354)
+  * Test suite enhancements
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 20 Jan 2017 12:54:40 +0100
+
+git-buildpackage (0.8.10) unstable; urgency=medium
+
+  * [ede603e] GitRepository: properly use pipe on empty strings.
+    (Closes: #850319)
+  * [42ee784] buildpackage: print proper dist when using sid.
+  * [e9ffa80] buildpackage: create all missing dirs with --export
+    Thanks to Andrea Zagli for the suggestion
+  * [42878ff] dch: honor --no-git-author
+    Thanks to David Kalnischkies for investigating (Closes: #796913)
+  * [4086fc9] import_dsc: Store debian/changelog in commit message
+    when importing packages. (Closes: #577810)
+  * [5fb0749] import_orig: Delay unpack of component tarballs.
+    (Closes: #840602)
+  * [67d8b9f] Move default gbp.conf back to the right location.
+    Thanks to Luca Boccassi (Closes: #850937)
+  * [80a1c39] Quote arguments passed to builder.
+    Thanks to Simon McVittie for the detailed report (Closes: #850869)
+  * [4a41d49] import-orig: Move orig.tar.gz with filter-pristine-tar.
+    (Closes: #558777)
+  * [661444b] Update docs regarding --download and drop it from completions
+  * flake8 test suite and example cleanups
+  * Update test data submodule URLs to https
+  * Make gbp-posttag-push easier to use
+  * [bba1ec7] docs: changelog entry is not created after gbp import-orig.
+    Thanks to Guillaume Millet
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 12 Jan 2017 10:08:28 +0100
+
+git-buildpackage (0.8.9) unstable; urgency=medium
+
+  [ Guido Günther ]
+  * [b6a94b6] git-pbuilder: Run actions under "set -x"
+    cowbuilder is currently very terse about certain errors so run the
+    action under "set -x" to print the exact command invocation.
+    This will also help to diagnose sudo issues.
+  * [ef1d8e7] create-remote-repo: allow to list config sections via
+      gbp create-remote-repo list
+  * [be44031] gbp create-remote-repo: autocomplete --remote-config= too
+  * [1291b17] Update to git-builder 1.43. Thanks Russ Allberry!
+  * [0e3deeb] setup.py: use a valid classifier
+    from https://pypi.python.org/pypi?%3Aaction=list_classifiers
+  * [9cbb9df] Use relative patch to install gbp.conf to make
+    pip install --user work
+  * [6f5070d] bash completion: don't complete options values with options.  So
+    far hitting <tab> on --bar= would have all other options as suggestions
+    which is confusing.
+  * [a21e394] bash completion: complete tags on --upstream-vcs-tag= too
+  * [fe39b8e] bash completion: complete filenames on hooks, cleaners and builders
+  * [f7a61fa] Only set username and email when creating repos.  Don't modify
+    existing ones.
+  * [cb8169d] gbp {clone, import_dsc, import_srpm}: Document new
+    --repo-{user,email} options
+  * [7b297b7] GitRepository: allow to check cleanliness of arbitrary paths
+  * [e31f15b] gbp pq: Don't fail --commit on empty commits. So far we would fail
+    empty commits with a confusing error
+  * [bad1f23] import-orig: Handle download errors properly.
+  * [d90e6be] import-orig: determine download automatically making --download
+    superfluous and deprecated.
+  * [58271d6] import-dsc: determine download automatically making --download
+    superfluous and deprecated.
+  * [8038a6f] import-dsc: Improve error message if there is no dsc file
+    instead of spewing the exception on the console.
+  * [9ecb5a4] Add helper to run tests in docker container
+    and use this on travisci. Some ideas taken form travis.debian.net.
+  * [3b1b9bc] GitRepository: use GitArgs for update_ref
+  * [1ac2724] GitRepository.commit_dir: add a proper reflog entry
+    otherwise 'gbp import-dsc' adds reflog entries without a description.
+  * [7ae2778] GitRepository: allow for dry-run push
+  * Various enhancements to the test-suite including tests that reach out to
+    the network to test these import options
+  * Various enhancements to the gbp-posttag-push example hook like trying the
+    git push with --dry-run before the upload.
+
+  [ Michael Stapelberg ]
+  * [67cf3ed] gbp clone: configure user.email, user.name from DEBEMAIL/DEBFULLNAME.
+    Close: #845536
+
+ -- Guido Günther <agx@sigxcpu.org>  Sat, 31 Dec 2016 17:13:03 +0100
+
+git-buildpackage (0.8.8) unstable; urgency=medium
+
+  [ Chris Lamb ]
+  * [03276df] Add ability to specify the clone target to gbp-import-{dsc,srpm}
+    (Closes: #846567)
+
+  [ Guido Günther ]
+  * [0a9cf44] docs: setting target dir is supported for --download too
+  * [f631e64] import_dsc: fail properly again without a package to import
+  * [a10c77b] import_srpm: allow for more than one argument otherwise giving a
+    target dir always raises an error
+  * [e1aec57,627b858] import_rpms: use upstream version for upstream tag
+    (Closes: #846936)
+  * [ce42aadc] pq_rpm: use relative path names for patches Based on a patch
+    from Tzafrir Cohen
+    (Closes: #834582)
+  * [fa091b6] rpm: improve error message on specfile patch parser errors.
+  * [bf4afbe] gbp-posttag-push: catch exceptions instead of printing the full
+    trace
+  * [1d44f48] buildpackage_rpm: drop unused vcs_info()
+  * flake8 cleanups all over the rpm code
+
+  [ Tzafrir Cohen ]
+  * [73d30ef] specfile: handle %patch -F.
+    (Closes: #846479)
+  * [d9b28f9] gbp-mock: handle single letter options by properly handling '-?'
+    to request help output.
+    (Closes: #847464)
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 08 Dec 2016 14:52:18 +0100
+
+git-buildpackage (0.8.7) unstable; urgency=medium
+
+  [ Guido Günther ]
+  * [924f809] Build-depend on libdistro-info-perl.
+    This silences the testsuite and unbreaks the build on Ubuntu
+    (Closes: #842960)
+  * [36b8a58] rpm: don't warn about deprecated $repo/.gbp.conf.
+    People use it a lot with rpm based tools so don't warn there until we
+    clearly suggested a better location.
+  * [3c498e1] docs: Don't suggest deprecated section names in examples
+  * [42657fc] docs: Rework "upstream uses git" section
+  * [ced46db] tests: Move doctests to subdir
+  * [ea5775a] commands: allow to fall back to error reason if stderr is empty.
+    Use this in PristineTar and SrcRpmFile to give better error messages if
+    the command doesn't even get to print to stderr (i.e. missing on disk).
+    (Closes: #842592)
+  * [4cacaeb] Avoid printing deprecation twice.  Some tools reparse the
+    config. We don't want another deprecation in this case.
+  * [039a286] Avoid deprecation outside of Debian package repositories.  E.g.
+    ~ might have a .gbp.conf for the user and might be git managed.
+  * [acf7a73] Avoid deprecation on bash completion
+  * [6f75d7c] Fix new flake8 errors. (Closes: #844932)
+  * [420e299] DebianGitRepository: Handle dot escaping as specified in DEP-14
+    (Closes: #843840)
+  * [d360a6d] DebianGitRepository: simplify version mangling '%' is not valid
+    in a Debian version number and we only want single character replacements
+    for now.
+  * [7ed5e2b] DebianGitRepository: Unmangle version.  When mapping from a git
+    tag to a Debian version unamngle it.
+  * [0b317ee] docs: Use version mangling with care
+  * [c96a5b4] docs: Recommend DEP-14
+  * [9cb3966] examples/gbp-posttag-push: allow to upload packages too after
+    pushing all the git data to the remote end. Making one more custom
+    packaging script obsolete.
+
+  [ Jonas Meurer ]
+  * [dd5c3bc] Add version mangling.
+    This allows to replace characters in upstream version numbers. I.e.
+    replace '-' by '.'. (Closes: #842638)
+
+ -- Guido Günther <agx@sigxcpu.org>  Mon, 28 Nov 2016 08:39:35 +0100
+
+git-buildpackage (0.8.6) unstable; urgency=medium
+
+  * [a35d7d6] buildpackage: handle <vendor>/master
+  * [12fda23] create-remote-repo: print proper error message on missing
+    remote-configs instead of printing the exception to the console.
+  * [e917d3a] config: Turn dict of config files into a list so we get a fixed
+    order with all Python versions
+  * [c092d73] config: warn on deprecated $REPO/.gbp.conf location.  The file
+    is deprecated at least since 2012 but we never warned about it.  Warning
+    can be disabled via GBP_DISABLE_GBP_CONF_DEPRECTATION.
+  * [507ae50] import-orig: Document --rollback option
+  * [eb3be92] import-orig: Give some context on --merge-mode=replace option
+
+ -- Guido Günther <agx@sigxcpu.org>  Sun, 23 Oct 2016 17:16:23 +0200
+
+git-buildpackage (0.8.5) unstable; urgency=medium
+
+  [ Guido Günther ]
+  * Fixes:
+    * [7c964ea] buildpackage: add back export-dir options
+      (Closes: #839581)
+
+  * Improvements:
+    * [9817e89] posttag-push: Print branches we push to
+
+  * Cleanups:
+    * [a5a8a1c] pq: remove redundancies in --pq-from code paths
+    * [59dce12] pq: introduce pq_on_upstream_tag
+    * [f31bcd2] pq: make TestFromTAG tests silent
+    * [c1ab85a] test_pq_rpm: flake8 clean
+    * [86068d4] test_pq_rpm.py: don't spew on stderr
+    * [46787e3] test_buildpackage_rpm.py: flake8 clean
+    * [f96c8e1] tests: capture stderr in gbp rpm-ch component tests - reduces
+      spurious output
+    * [e4c893d] tests: capture stderr in gbp import_srpm component tests -
+      reduces spurious output
+    * [43beb38] GitRepository.archive: use _git_inout instead of the
+      deprecated _git_getoutput that spews to stderr This silences a spurious
+      output to stderr in test_buildpackage_rpm
+    * [55e8c8f] GitRepository.list_submodules: use _git_inout and check exit
+      status.
+    * [53f9f40] test_buildpackage_rpm: check that we fail subtarball
+      generation correctly
+    * [f87c21c] tests/buildpackage: test --git-export-dir
+
+  [ Linn Crosetto ]
+  * [c1b32fa] dch: avoid adding section in snapshot mode if distribution is
+    UNRELEASED. (Closes: #838714)
+
+ -- Guido Günther <agx@sigxcpu.org>  Mon, 10 Oct 2016 18:06:32 +0200
+
+git-buildpackage (0.8.4) unstable; urgency=medium
+
+  [ Maximiliano Curia ]
+  * [e615c65] pq: Handle unmerged debian branches. This allows one to import
+    the patch-queue branch onto the upstream tag.
+    (Closes: #834726)
+  * [f6433f9] pq: Ensure we are working in the right git directory.
+
+  [ Guido Günther ]
+  * [6909bb1] Unbreak gbp-pq manpage generation
+  * flake8 cleaniness
+  * [7a7068d] create_remote_repo: allow one to create non bare repositories
+    (Closes: #837158)
+  * [98cea5f] import_orig: Use gbp.scripts.common.hook
+  * [5ff1be8] test_rpm_ch: use GIT_AUTHOR_* env vars.
+  * [98ea945] flake8: Ignore rpm related files for now. This makes it easier
+    to integrate changes from git-buildpackage-rpm.
+  * [3ded91b] Move doc generation and test invocation to separate Makefile
+  * [2845359] Switch from pychecker to flake8. The later is maintained and
+    has more checks Use '-j1' for now since otherwise we need /dev/shm access
+    which fails in a pbuilder chroot with EPERM.
+  * [264090e] Rename README to README.md to get Markdown formatting
+  * [2809284] dch: document which options can't be set via gbp.conf
+  * [2122d8b] dch: document --security
+  * [ef7ca4a] config: allow one to specify short options
+  * [3feba49] dch: make urgency a config file option so it can be set via
+    gbp.conf (Closes: #837680)
+  * [fdcee06] dch: add missing short opts to manpage
+  * [dbb9623] Unbreak patch delta output broken by "pq: Ensure we are working
+    in the right git directory"
+  * [3e26d02] Vcs-Git: use https transport
+  * [74c7bc0] autopkgtest: Skip build if setuptools is not available
+  * [6ec588a] pq: restrict choices of pq-from to 'DEBIAN' and 'TAG'
+
+  [ Markus Lehtonen ]
+  * [c6b32c8] Command: redirect stdout/stderr to sys.stdout/stderr.
+  * [245b443] tests: capture stderr in buildpackage-rpm unit tests.
+    Reduces spurious output from rpmbuild. (Closes: #829690)
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 27 Sep 2016 18:56:12 +0200
+
+git-buildpackage (0.8.3) unstable; urgency=medium
+
+  * Upload to unstable
+  * [51620e9] import-orig: export version information to postimport hook
+    (Closes: #833429)
+  * [086ff78] Drop dependencies on sp and jade.
+    Thanks to Neil Roeth
+  * [bf46e26] Update to git-pbuilder 1.42
+  * [99e7703] import_orig: Properly abort merge on rollbacks.
+    If merging fails we need to call "git merge --abort"
+  * [a868977] tests: match env vars values in hook checks too
+  * [fae6456] tests: only check gbp related env vars in hooks.
+    This avoids test failures when env vars contain newlines
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 26 Aug 2016 14:18:17 +0200
+
+git-buildpackage (0.8.2) experimental; urgency=medium
+
+  * [1f0013c] import-orig: Switch to Debian branch before merging in changes
+    otherwise we'd always merge into the current working copy
+    (Closes: #832016)
+  * [a52aff5] download_orig: unlink file before raising the exception
+    otherwise we would not clean up
+  * [3d261da] import_orig: Only try rollbacks if necessary.
+  * [61e659d] pq: strip comments with multiple leading whitespace. Really
+    Closes: #825536
+  * [68940fb] pq: Retry patch with whitespace fixup on failure.  This helps
+    patches with CRLF line endings and we don't lose anything since we'd
+    failed otherwise anyway. (Closes: #833066)
+  * [e2671b9] docs: fix --postclone and --hooks options of git-clone.
+    Thanks to IOhannes m zmoelnig for pointing this out
+  * [e68a0a1] docs: Document --postclone hook behaviour with debian/gbp.conf
+    Thanks to IOhannes m zmoelnig for pointing this out
+    (Closes: #833143)
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 02 Aug 2016 19:26:33 +0200
+
+git-buildpackage (0.8.1) experimental; urgency=medium
+
+  [ Guido Günther ]
+  * [3a5a497] import_dsc: Use the same patch options as dpkg-source for 1.0
+    packages (except for creating backup files) (Closes: #670099)
+  * [8d84fd3] dch: Match 'thanks' case insensitive (Closes: #746753)
+  * [29f16ca] Unbreak autopkgtest by setting git user and email
+  * [2b33349] import_orig: Drop duplicate log message when rolling back a branch
+  * [7ba43f6] Improve check for empty_repository.
+    Based on a patch by Carlos Maddela (Closes: #791472)
+  * [55fd73a] Remove outdated ref on git-import-dsc
+  * [1fae819] Use proper test fixtures.
+    (Closes: #723888)
+  * [95c8c53] clone: add postclone hook (Closes: #812816, #812815)
+  * [491adcf] clone: document missing directory option
+
+  [ Michael Elovskikh ]
+  * [a6311e6] Added option `never` to dch `--spawn-editor` choices
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 08 Jul 2016 15:44:28 +0200
+
+git-buildpackage (0.8.0) experimental; urgency=medium
+
+  [ Markus Lehtonen ]
+  * [c5cfb5e] Introduce gbp-rpm-ch.
+    Initial version of gbp rpm-ch command, a tool for maintaining
+    RPM changelogs. The new command supports %changelog section inside spec
+    files as well as separate changelog files ("OBS style"). (Closes: #808027)
+
+  [ Guido Günther ]
+  * [b4b7f9f] clone: Be a bit more verbose and let the user know that we
+    started cloning
+  * [1f58d21] PatchSeries: Strip comment from patch names (Closes: #825536)
+  * [1989c32] pq: Report number of imported patches
+  * [dcb145f] Use existing option as example in gbp-buildpackage manpage.
+    Thanks to Nicolas Braud-Santoni (Closes: #828703)
+  * [f1c64e2] manpages: add examples for gbp {clone,import-dsc}
+  * [83dfa67] GitRepository: Deleting a non-existing branch should not throw
+    an error
+  * [ba7b087] docs: Clarify some gbp pq options
+  * [ebc6b91] import_orig: Recover from import errors by winding back branches
+    and tags to their pre-error states (Closes: #828838)
+  * [4964234] dch: Log version number when preparing a snapshot
+    (Closes: #829025)
+  * [7a6641a] import-dsc: Don't fail on 1.0 non-native packages without a
+    Debian version
+    (Closes: #829070)
+  * [8c4460c] Actually install gbp-rpm-ch and unbreak manpage generation
+  * [d92b656] tests: Omit build dependend variables from epydocs
+    based on a patch from Sascha Steinbiss (Closes: #827546)
+  * [d977377] Set date in manpages based on last changelog entry
+    for reproducibility. This can be reverted once ocbook2man is fixed
+    (#800797).
+    Thanks to Sascha Steinbiss for the patch
+  * [53f37eb] import-orig: Make default import message more gbp-dch friendly.
+  * [312c9b9] Use imperative for git messages as suggested in gh:#26.
+  * [2bc3801] import_dsc: don't assume component tarballs have the correct name.
+    (Closes: #829458)
+  * [bc3805c] import_orig: add support for importing additional tarballs.
+    We expect the additional tarballs to be located next to the orig tarball
+    and to be already named properly. (Closes: #561071)
+  * [870c901] Docs: Clarify on possible key names and priorities in gbp.conf
+  * [7a521d4] Handle Ctrl-C more gracefully
+  * [b540c98] additional tarballs: allow one to configure components via gbp.conf
+  * [1d4d4a2] config: Allow one to give list values in plural form
+  * [700e164] config: Properly abort on config file parsing errors
+    instead of printing an exception on the console
+  * [3b4912d] config: always use 'gbp <cmd>' in help output.
+    The {git,gbp}- versions went away ages ago
+  * [f545010] Give more instructions when config is unparseable
+    and make return codes and messages consistent.
+    (Closes: #733640)
+  * [a0ed81b] Require python 2.7. It's the default up to Wheezy
+    (Closes: #685031)
+
+  [ Otto Kekäläinen ]
+  * [af16f59] Fix simple spelling errors in comments and strings
+  * [f28a26b] Fix spelling of existant->existent in function names, strings
+    and comments
+
+ -- Guido Günther <agx@sigxcpu.org>  Mon, 04 Jul 2016 21:47:42 +0200
+
+git-buildpackage (0.7.5) unstable; urgency=medium
+
+  [ Dmitry Teselkin ]
+  * [3a93ada] Use tox for testing
+
+  [ Guido Günther ]
+  * [b56f7b0] buildpackage: don't claim the tarball does not exist. It can
+    also be triggered by --force-create
+  * [4ff5c3a] buildpackage: Simplify tarball generation logic.
+  * [cfcac02] buildpackage: Allow to generate subtarballs.
+  * [508656d] buildpackage: Support pristine-tar with multiple tarballs
+    but disable pristine-tar-commit in this case for now
+  * [22435b2] buildpackage: Check for existence of subtarballs as well
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 27 May 2016 10:27:07 +0200
+
+git-buildpackage (0.7.4) unstable; urgency=medium
+
+  [ Guido Günther ]
+  * [bb373cf] buildpackage: Improve error message when using DEP14
+  * [074e8e6] import_dsc: Allow to use pristine-tar with multiple tarballs
+  * [1aa9fc3,31754ac,6681989,1d8fb9d]: more multiple tarball tooling to
+    support it in other commands besides import-dsc with upcoming releases
+  * [060408f] create_remote_repo: Don't fail if current repo does not have any branches
+    (Closes: #822089)
+  * [d232194] gbp.conf: Add customization example
+  * [816829a] import_dscs: Mention debsnap command in options so it shows up
+    in the bash completion
+
+  [ Daniel Kahn Gillmor ]
+  * [a507ce2] docs: correct gbp.conf example of multiple filter options.
+    Commit 7e8f3bb1223269cf1b646 fixed the section that explains how to use
+    multiple filter options but forgot to clean up the import-orig example
+    at the end of the manpage.
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 05 May 2016 13:50:41 +0200
+
+git-buildpackage (0.7.3) unstable; urgency=medium
+
+  * [324b833] Fixup trailer in README.source example
+  * [3a84c11] Add testcase for non-native build-package
+  * [61ced0a] Mention debian branch (Closes: #817980)
+  * [9ef2aff] Clarify {upstream,debian}-{branch,tag} options
+    (Closes: #817980, #817981)
+  * [511b67f] gbplogtester: Check if we have enough log lines
+  * [9990b88] import_dsc: Make 'gbp import-dsc' aware of component tarballs
+    instead of plain failing. Just import the additional tarball but disable
+    pristine-tar until we sorted out how to export things again.
+    (Closes: #561072)
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 01 Apr 2016 10:50:05 +0200
+
+git-buildpackage (0.7.2) unstable; urgency=medium
+
+  * [81ca19d] import_orig: Check git repo before downloading the source.  This
+    makes sure we fail fast and not after the 30MB download
+  * [9dbe0cf] import_orig: Check upfront if the upstream tag already exists.
+    This makes sure we fail fast instead of importing first and then failing
+    to tag.
+  * [0b5a0a2] import_dsc: Check git repo before downloading the source.  This
+    makes sure we fail fast and not after the 30MB download
+  * [9cc0a3f] buildpackage: Move git-pbuilder environemt variables into GBP_
+    namespace.
+    Keep the old ones for backward compatibility but this way they're all
+    available to all hooks and not only to prebuild.  In order to not put more
+    stuff into the process enviroment dont use os.environ but only pass these
+    in via extra_env.
+    While at that test that hooks actually get their environment variables set
+    up correctly.
+  * [36893cb] buildpackage: make sure hook_vars is always available.
+    --tag-only uses different code paths so far only covered by the external
+    test suite. Add a component test to fix that.
+  * [92b7f1b] upstream_source: Don't silently ignore filters when importing
+    zip archives
+  * [35bd093] Don't throw exception when printing help an getting EPIPE.
+    Python's optparse does not ignore EPIPE so just add our own print_help().
+  * [2f0d139] docs: Clarify relation between git- prefixed options and
+    gbp.conf
+  * [fe37670] docs: add options passed to build command to synopsis
+  * [abe4e40] Update to git-pbuilder 1.40.
+    Thanks to Russ Allberry
+  * [2cc710d] docs: Fix sgml parsing errors spotted by docbook2html
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 29 Jan 2016 09:13:18 +0100
+
+git-buildpackage (0.7.1) unstable; urgency=medium
+
+  [ Guido Günther ]
+  * [0bb2064] Python3 cleanups
+  * [003c7cf,8583e03] Update to git-pbuilder 1.37 and 1.38
+    incorporating our changes. Many thanks to Russ Allberry!
+  * [7cc509d] manpages: mention git-pbuilder upfront in the workflow and add
+    missing pre-build hook
+  * [ebe31e6] manpages: consistency for gbp buildpackage.
+  * [7835216] Use faster CGit URL for Vcs-Browser
+  * [bf4a67d] manpages: document GBP_DISABLE_SECTION_DEPRECTATION
+  * [bfe32f1] buildpackage-rpm: add support for mock chroot builder.
+     Try: gbp buildpackage-rpm --git-mock --git-dist=epel-6
+    This is very heavily based on a patch from Tzafrir Cohen.
+  * [84a2025] Support "gbp help <command>" (Closes: #791759)
+  * [cbd40e5] import_dsc: Fail if a package has additional unhandled tarballs.
+  * [8583e03] import-dsc: Bail out if target dir exists.
+    If import-dsc is not run from within a Git repository it tries to create
+    one named like the source package. If that directory already exists we
+    get confusing message like:
+        gbp:info: No git repository found, creating one.
+        gbp:warning: Version 0.7.0 already imported.
+        gbp:info: Everything imported under /foo/git-buildpackage
+    Avoid this by checking if the directory exists and aborting in this
+    case. (Closes: #766350)
+  * [6d80239] config: Use the same logic for printing a single and all values.
+    Printing single values didn't populate the parser with defaults so we
+    ended up with empty values for options not set in a config file.
+  * [0d6e99d] Add README.source example. This can be used for gbp managed
+    projects. Different tools are mentioned in different paragraphs so they
+    can be extended or deleted if unused.
+  * [d02d812] docs: Update Patches chapter. Mostly mention --commit and remove
+    referenes to outdated tools.
+  * [597e040] docs: Use <programlisting> consistently.  Use it for command
+    blocks instead of a mixture of programlisting and screen.
+  * [8e1020d] docs: Move all debian packaging branches into the debian/
+    namespace to be consistent with DEP-14
+
+  [ Markus Lehtonen ]
+  * [ac020c3,ec331ef,c195442] rpm packaging cleanups
+  * [82999a8] docs: enable building html docs with docbook2html if sgxml2x is
+    unavailable.
+  * [af17809] tests: enable buildpackage-rpm component tests.
+  * [89648de] buildpackage_rpm: implement --native option.
+  * [fe5ffe0] tests: enable unit tests for buildpackage-rpm
+
+  [ Ken Dreyer ]
+  * [aba67ba] git-pbuilder: spelling fix
+
+  [ Lucas Nussbaum ]
+  * Import content of https://honk.../debian_packages_in_git/ into the
+    official manual.
+    (Closes: #809023)
+
+  [ Anthony Fok ]
+  * [96df9e3] docs: Restore coloured background for <programlisting> in docs
+    by using lower case class names.
+    Closes: #gh:14
+
+ -- Guido Günther <agx@sigxcpu.org>  Mon, 28 Dec 2015 15:26:56 +0100
+
+git-buildpackage (0.7.0) unstable; urgency=medium
+
+  [ Guido Günther ]
+  * [17e8a51] docs: Explain gbp dch --upstream-tag. (Closes: #795774)
+  * [4da6402] docs: Split manpages between debian and rpm related tools.
+  * [16dc010] docs: Add manpages for gbp import-srpm and gbp pq-rpm based on
+    Markus Lehtonens work.
+  * [24ee8fc] docs: Add missing EOF.
+  * [01acdd7] docs: git-buildpackage is not a command anymore
+  * [db5d50f] docs: Update pbuilder invocation section. The current docs were
+    badly outdated not even mentioning --git-pbuilder.  Also document that we
+    use cowbuilder with git-pbuilder. (Closes: #703969)
+  * [c39e779] docs: Update gbp.conf manpage. Better explain parse order and
+    option format.
+  * [26c726e] docs: Add meta-closes-bugnum to gbp-pq manpage since it's used
+    with "export --commit".
+  * [45a5d08] docs: Use "hook" consistently for commands that aren't strictly
+    necessary to run a build.
+
+  * [6da8e46] buildpackage: Pass pbuilder dist to prebuild hook. This can e.g.
+    be used to setup a tmpfs for git-pbuilder.
+
+  * [422ae85] buildpackage-rpm: Add a minimal gbp buildpackage-rpm based
+    on Markus Lehtonens work.
+
+  * [c57c9fc] config: Don't print None for unset values. Just leave them
+    empty.
+  * [98df835] config: Don't skip empty values when printing all options, just
+    print an empty value. This allows us to get a complete option list.
+
+  * [e4704a6] git-pbuilder: Update to 1.35. (Closes: #765724)
+  * [4be0df7] git-pbuilder: Check for sudo. (Closes: #796046)
+
+  * [ffdfcd0] packaging: Update description for rpm packages. Make it clear
+    that we're still experimenting with layouts and names.
+  * [5704478,da78c09,50767fd,fc60141] rpm: spec file improvements
+
+  * [488ba32] examples: gbp-posttag-push: Be more verbose when pushing.
+  * [cf69c46] examples: Remove gbp-cowbuilder-sid, git-pbuilder replaced it
+    ages ago.
+  * [7630523] examples: Update jenkins-scratchbuilder to not use "git-" but
+    "gbp ".
+
+  * [c227c70] tests: Skip buildpackage-rpm component tests until we setup a
+    proper test data repo.
+  * [48d9d58] tests: Allow to easily check tags in a repo too.
+  * [20d3c1d] tests: Add simple component test for buildpackage.
+  * [3528b0f] tests: Add simple component test for gbp import-orig.
+  * [34b4f65] tests: Add autopkgtest that builds a RPM of ourself.
+
+  * [386d3a7] bash completion: Move from /etc to /usr/share.
+  * [57f810c] bash completion: Use _have() instead of have() the later not
+    being deprecated.
+  * [25ca642] bash completion: Ensure autoload. The completion needs to be
+    named like the command to be autoloaded.
+
+  [ Lucas Nussbaum ]
+  * [a954d1f] docs: Document gbp import-orig --debsnap.
+  * [88833aa] docs: Document gbp import-orig --uscan.
+  * [bf60f8a] docs: Fix typos in documentation and man pages.
+
+  [ Markus Lehtonen ]
+  * [5cab1bc] tests: tests.testutils: Add ls_dir(), ls_tar() and ls_zip()
+  * [7ce69de] tests: Rewrite gbp.tmpfile.
+  * [f45585f,6d56f24,a645073,3474d74] rpm packaging improvements
+  * [3474d74] docs: Document gbp meta-tag commands of pq-rpm.
+  * [a9ed4b2] docs: Document some options of buildpackage-rpm.
+    Add manpage documentation for some previously undocumented options.
+    Also, drop non-existing --git-patch-export and --git-export-only options
+    from the manpage.
+  * [f157bfb] buildpackage_rpm: Fix crash when package has no source archive.
+
+  [ Jonathan Toppins ]
+  * [c89c29d] dch: Allow bug number format to be overridden to help
+    derivatives like EX-12345. This also helps in pulling CVE numbers simply
+    by letting the user modify the regex to something like 'cve-\d+-\d+'.
+
+  [ Florian Haftmann ]
+  * [2dc9177] buildpackage: Early check before attempting to brand using
+    pre-existing tag
+
+  [ Rafael Laboissiere ]
+  * [cd6d7da] docs: Clarify Gbp-Dch vs Git-Dch meta tag wording.
+    (Closes: #797343)
+
+  [ Daniel Gollub ]
+  * [5210026] dch: Restore correct version-guessing for -0releases.
+
+  [ Anthony Fok ]
+  * [3e1240a] packaging: Add dh-python to Build-Depends
+  * [b49bb0d] docs: Change "it's" to "its" in comments where appropriate
+  * [881087a] docs: Copy-edit git-buildpackage documentations
+  * [d8a30df] docs: Fix SGML validation errors in documentation
+
+  [ James Clarke ]
+  * [ae6826b] git-pbuilder: Check correct config file when using qemubuilder.
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 21 Oct 2015 08:30:40 +0200
+
+git-buildpackage (0.6.33) experimental; urgency=medium
+
+  [ Carlos Maddela ]
+  * [da4d469] Add support for referencing existing local repositories when
+    cloning repositories. (Closes: #790889)
+  * [97c7a32] Allow exported patches to be renumbered and the patch number
+    prefix format to be specified as an option. (Closes: #790890)
+  * [279e946] import-orig: Honour --debian-branch option when importing into
+    an empty repo. (Closes: #791473)
+
+  [ Guido Günther ]
+  * [035b179] import-orig: Add new --merge-mode=replace.
+    This allows one to not merge upstream versions into the debian branch
+    but rather replace the content of the debian branch and only preserve
+    the debian/ dirs content. (Closes: #778594)
+  * [3d86432] buildpackage: in overlay mode remove debian/ from unpacked
+    tarball.  We don't have a way to influence the upstream tarball in overlay
+    mode so remove debian/ after unpack if the source format expects this.
+    (Closes: #792692)
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 14 Aug 2015 18:29:53 +0200
+
+git-buildpackage (0.6.32) unstable; urgency=medium
+
+  [ Guido Günther ]
+  * [82a3971] import-dsc: mention that we create new repos if none found
+    (Closes: #748340)
+  * [dff628b] Don't insist on cowbuilder that much.
+    Allow for pbuilder or sbuild either. Since the integration with
+    cowbuilder is currenty best let's see how this turns out. It would be
+    nice if somebody would provide some code to detect which builder is
+    there and automatically adjust configuration for that one.
+    Closes: #695280
+  * [eff79b1] Add symlink for git-buildpackage.1.
+    Make sure "man git-buildpackage" at least gives enough information where
+    to look further.
+  * [6a5675c,901581b,64e6fff,5f9e72a] Non C Locale related fixes
+  * [a331b7f] Add spec file taken from git-buildpackage-rpm.
+  * [46eacf2] Use --set-upstream-to instead of deprecated --set-upstream
+    (Closes: #791798)
+  * [cf67fc5] Fix urllib.urlopen import six.moves.urllib.urlopen does not
+    exist
+
+  [ Felipe Sateler ]
+  * [3b99a6d] import-orig: Document pattern replacing in upstream-vcs-tag
+    (Closes: #787832)
+
+  [ Evgeni Golov ]
+  * [b3341e5] Fix FSF address - thanks rpmlint
+    use gnu.org/licences instead of a postal address, as suggested by Guido
+  * [df215f3] call debchange instead of dch.
+    Call the tool by its actual name instead of the abbriviation.
+    dch is a symlink to debchange, which is not present on Fedora
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 08 Jul 2015 20:07:15 +0200
+
+git-buildpackage (0.6.31) unstable; urgency=medium
+
+  * [8241459] pq: Allow to preserve the patch name on import/export
+    (Closes: #761161)
+  * [32c52b7,58ea067] pylint and python3 cleanups
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 02 Jun 2015 20:00:47 +0200
+
+git-buildpackage (0.6.30) unstable; urgency=medium
+
+  * [474acd9] Allow to automatically determine the dist to build for.
+    Setting --git-dist=DEP14 will follow the DEP14 proposal to determine the
+    suite to build for via vendor/suite. The exception is sid where DIST is
+    just set to be empty as well as native packages.
+  * [18d83d5,3894520,c4f82d3] Python3 compatibility
+
+ -- Guido Günther <agx@sigxcpu.org>  Sat, 30 May 2015 19:41:25 +0200
+
+git-buildpackage (0.6.29) unstable; urgency=medium
+
+  * [14c4f41] Drop my_collections from spec files.  It trips up recent librpm
+    and we don't need the data for the tests anyway.
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 26 May 2015 22:33:06 +0200
+
+git-buildpackage (0.6.28) unstable; urgency=medium
+
+  * [7a0b9df] git-pbuilder: Support creation of chroots for LTS
+  * [c11a4d3] Add back completion for pq subcommands. This got lost in
+    270f41.
+
+ -- Guido Günther <agx@sigxcpu.org>  Sat, 23 May 2015 12:43:44 +0200
+
+git-buildpackage (0.6.27) unstable; urgency=medium
+
+  * [15187ba,270f41b] bash-completion: Simplify the code. This additionally
+    avoids warnings on unknown commands and gives us basic completion for
+    the RPM commands for free.
+  * [f22785b] Allow to disable config section deprecations. Sections named
+    [gbp-<command>] or [git-<command>] in gbp.conf cause a warning. In order
+    to make it simpler to be compatible with ancient gbp versions these
+    can be disabled by setting
+        GBP_DISABLE_SECTION_DEPRECTATION=true
+    in the environment.
+  * [3585fdb] bash-completion: Disable config section deprecation warnings.
+    It's of no use if we get these warnings on bash completion, it only
+    confuses users. They're still shown when running the actual command.
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 05 May 2015 08:55:11 +0200
+
+git-buildpackage (0.6.26) unstable; urgency=medium
+
+  * [72e129b] Drop git-* commands from manpages too.
+    Thanks to Michael Biebl (Closes: #783537)
+  * [ee2d421] Add a note to NEWS.Debian about the removal of the git-* symlinks
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 28 Apr 2015 00:19:03 +0200
+
+git-buildpackage (0.6.25) unstable; urgency=medium
+
+  [ Markus Lehtonen ]
+  * [f10d67f] UpstreamSource.guess_version: recognise debian native tarballs
+  * [3ef3304] tests: add tests for UpstreamSource.guess_version()
+  * [60ad28f] rpm tests: use eq_ and ok_ from nose tools.
+    Provides better error messages as is more consistent as eq_ was already
+    used in some test cases.
+  * [f089021] tristate: implement __nonzero__() method.
+    Returns False if tristate is 'off', otherwise True ('on' or 'auto').
+  * [e07aaba] config: support for older six
+  * [e4f767f] GitRepository/has_submodules: add treeish argument.  For
+    defining a Git treeish which to look into, instead of the current working
+    copy.
+  * [5a74d4e] tests: add unit tests for gbp.rpm.SrcRpmFile
+  * [1e347cc] rpm tests: disable one anomalous pylint error
+  * [bd72c30] rpm tests: unbreak spec parsing test for openSUSE 13.2.
+    Some SUSE-specific RPM tags are not supported anymore.
+
+  [ Guido Günther ]
+  * Upload to unstable
+  * Some Python3 compat including using six.
+  * [74008c7] Turn off coverage output by default.  It's much simpler to spot
+    the cause of test failures this way.
+  * [19d9280] Update docs on component tests and mailing list
+  * [0b98c48,49f0e44,7ebf843] gbplogtester: robustness so we can finally
+    silence the test suite.
+  * [b1b7761] config test: fix missing prefix. We want to test no prefix,
+    'gbp-' and 'git-'.
+  * [335dfdb] command_wrapper: Make error reporting more flexible.
+    We allow to substitute stderr, stdout and error_reason in run_error now.
+    These changes the API for derived classses slightly so fix them up as
+    well.
+  * [89574a0] Don't let pristine-tar spew on stderr.
+    Capture its output and only dump it on failure. This makes "gbp
+    import-orig" and test runs less verbose.
+  * [430be38] testutils: Fix __all__. The values weren't correctly seperated
+  * [36b90e9] SrcRpmFile: Add stderr to error messages
+    so we can better debug failures like
+        http://honk.sigxcpu.org:8001/job/git-buildpackage/230/changes
+  * [53fbee6] Depend on cpio needed by gbp import-srpm
+
+  [ Daniel Kahn Gillmor ]
+  * [83c5cc5] Allow to set upstream-vcs-tag via gbp.conf.
+    Also pass it through version_to_tag so
+        upstream-vcs-tag = libgpg-error-%(version)s
+    properly expands the version replacement. (Closes: #780602)
+  * [cb03293] Add %(hversion)s to version_to_tag to support some upstreams
+    enigmail upstream uses tags named enigmail-1-8 for 1.8.  Other
+    upstreams have used similar conventions, likely as holdovers from CVS
+    (e.g. gnupg 1.4.2 was tagged with V1-4-2).  This patch helps packagers
+    work with these upstreams. (Closes: #780679)
+
+  [ Martin Erik Werner ]
+  * [4a53c0f] docs: Fix diirectory->directory typo in gbp.conf manpage
+    (Closes: #783013)
+
+  [ Daniel Gollub ]
+  * [aa8548d,e0f8b5b] gbp-dch: Guess upstream-tag based on merge-base to not
+    accidentally pick up tags from the Debian branch.
+    (Closes: #gh:7)
+
+ -- Guido Günther <agx@sigxcpu.org>  Mon, 27 Apr 2015 09:05:16 +0200
+
+git-buildpackage (0.6.24) experimental; urgency=medium
+
+  [ Guido Günther ]
+  * [1d6c4c7] Deprecate legacy config sections.
+    We deprecate sections starting with git- and gbp- to reduce the confusion
+    about what gets parsed first.  Output a warning if the old format is in use.
+    Jessies gbp already supports both formats as does the one in
+    wheezy-backports.
+  * [e3a8666] Drop all gbp-* and git-* commands as announced in the
+    deprecation notice from June 2013. From now on only "gbp <command>" is
+    supported.
+  * [229f259] buildpackage: Tag currently checked out head.
+    Tag the head checked out at command invocation. The build can
+    take some time and the repo might have changed underneath us.
+    (Closes: #776506)
+  * [428e895] Make Debian and Git spelling consistent
+  * [644c97f] dch: Support Gbp-Dch: besides Git-Dch: as meta tag
+  * [64be54d] pq: Generate new style Gbp-Pq: Topic <topic> entries.
+  * [ff40c5d] Move requests import to downloads.
+    The requests import takes ages and therefore considerably slows
+    down program start up.
+    This is very much noticeably during bash completion. Before:
+    $ time gbp --list-cmds >/dev/null
+    real	0m0.559s
+    user	0m0.528s
+    sys	0m0.028s
+    After:
+    $ time gbp --list-cmds >/dev/null
+    real	0m0.092s
+    user	0m0.088s
+    sys	0m0.000s
+  * [d86c624] bash-completion: Avoid a pointless fork
+  * [0881bfc] Bump standards version
+  * Many fixes towards Python3 compatibility
+
+  [ Markus Lehtonen ]
+  * [7ce15d2] pq: deprecate the usage of 'gbp-pq-topic:'
+    Replaced by the "Gbp[-Pq]: Topic <topic>" command.
+  * [aa22e22] import-srpm: support gbp-config command.
+  * [1c6df3e] ComponentTestBase: ignore system and user config.
+    User might have a system and/or user specific gbp config files. Disable
+    these config files so that they don't affect the component tests.
+  * [55d5422] patchseries: strip numbering when guessing subject from filename
+  * [600d5d7] rpm: suppress stderr when unpacking src.rpm
+
+  [ Dmitrij Tejblum ]
+  * [296796f] git-dch --git-author: separate author and email.
+    Allow --git-author to work if either author or email is not specified
+    in the git config, taking the other config option into account.
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 20 Feb 2015 19:19:30 +0100
+
+git-buildpackage (0.6.23) experimental; urgency=medium
+
+  [ Markus Lehtonen ]
+  * [7a503e9] pq: move switch_pq() to common.
+  * [cb9271f] GitRepository: add diff_status method.
+    This is a method of getting the filename and status information of a
+    diff. That is, a list of files that changed and their status, "added",
+    "modified" etc.
+  * [410e613] GitRepository.create_branch: add 'force' option
+  * [a84f6c1] ComponentTestBase: add a per-class toplevel temp dir
+  * [0e7cb0d] ComponentTestBase: add check_files() method
+  * [194b6b8] ComponentTestBase: add dirs argument to _check_repo_state()
+    Make difference between regular files and directories, eliminating the
+    requirement of listing directories in the file list.
+  * [01470e1] gbp-dch: fix handling of the '--meta' option.
+    Make it effective again - previously it was totally ignored. Also,
+    change it's default value to True to match the current behavior.
+  * [f48f0ff] notify: catch RuntimeError when importing pynotify.
+    Work around a problem in some distros (e.g. Fedora) where "import
+    pynotify" crashes in RuntimeError in some cases, e.g. when DISPLAY env
+    variable is not set.
+  * [7df4d8c] log: fix auto colorizing for custom streams.
+    Check for existence of isatty() method in the stream object. Some custom
+    streams (e.g. in nose) do not necessarily have this.
+  * [4cd6627] buildpackage/dump_tree: add 'recursive' option.
+    For selecting whether to dump all the files recursively or just the top
+    level directory of the tree.
+  * [ff4cc8b] config: read the right config if run from subdir.
+    A step towards being able to run GBP tools from subdirectories.
+    Now expands '%(top_dir)s' and '%(git_dir)s' in config file path to root
+    of the working directory and git metadata directory, respectively.
+    Also, adds a new method _read_config_file() in preparation for
+    supporting per-tree config files.
+    Fixes tests.test_Config: currently the only correct way to define the
+    config file(s) to be parsed is by using the GBP_CONF_FILES environment
+    variable.
+  * [60479af] Introduce gbp-pq-rpm.
+    Initial version of gbp-pq-rpm - a tool for managing patch queues for rpm
+    packages. The functionality more or less corresponds to that of the
+    (Debian) gbp-pq. The only major difference probably being (in addition
+    to the obvious of working with .spec files instead of debian/) is that
+    patches are always imported on top of the upstream version, not on top
+    of the packaging branch (which might not even contain any source code).
+    (Closes: #771215)
+
+  [ Ed Bartosh ]
+  * [76739f8] GitRepository: Implement status method.  Simple wrapper to the
+    git-status command.
+
+  [ Guido Günther ]
+  * [578e394] pq: print which patch got just applied
+  * [e098857] test data: Add .git for bare repository
+  * [813d01d] Fix argument type
+  * [15663e7] import-orig: Add --download option to download tarballs via HTTP
+    (Closes: #747101)
+
+ -- Guido Günther <agx@sigxcpu.org>  Sun, 18 Jan 2015 15:29:57 +0100
+
+git-buildpackage (0.6.22) unstable; urgency=medium
+
+  * [3d8939d] git.vfs: fix close method. Preventing a infinite recursion
+    which can be triggered by gbp pq export --commit.
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 29 Oct 2014 07:47:21 +0100
+
+git-buildpackage (0.6.21) unstable; urgency=medium
+
+  * [81dab4b] pq: Don't fail commit if the series file is empty on the source
+    branch
+  * [740e431] man: fix option argument for --git-pbuilder-options
+  * [22a6987] Improve change reporting a bit
+  * [e08d64d] Complete setup.py for pypi
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 17 Oct 2014 18:41:14 +0200
+
+git-buildpackage (0.6.20) unstable; urgency=medium
+
+  * [ee44479] Allow to always drop pq branch after export (Closes: #761160)
+  * [51ac0a5] pq: document --drop
+  * [90b283f] meta-closes: Move help text to GbpOptionParser.help
+  * [0afcd3d] pq: Add "pq export --commit" option.  This commits the changes
+    in the pq right away. This options is currently experimental and subject
+    to change.
+
+ -- Guido Günther <agx@sigxcpu.org>  Sun, 12 Oct 2014 11:42:27 +0200
+
+git-buildpackage (0.6.19) unstable; urgency=medium
+
+  * [5d4cb92] Update to git-pbuilder 1.33
+
+ -- Guido Günther <agx@sigxcpu.org>  Sun, 07 Sep 2014 09:25:48 +0200
+
+git-buildpackage (0.6.18) unstable; urgency=medium
+
+  * Upload to unstable
+  * [6edd836] Don't delete *_source.changes on source only builds
+    (Closes: #758726)
+  * [a37832e] Mention --no-merge (Closes: #760091)
+
+ -- Guido Günther <agx@sigxcpu.org>  Sat, 06 Sep 2014 13:41:05 +0200
+
+git-buildpackage (0.6.17) experimental; urgency=medium
+
+  [ Guido Günther ]
+  * [692e5da] Make sure we fixup the changelog trailer with newer devscripts.
+    We don't change any mainttrailer options already given.
+    Thanks to James McCoy for the detailed explanation (Closes: #740566)
+  * [ae5805e] Improve error messages on formatting errors to
+    make it easier for the user to detect misformated replacement strings in
+    config files and command line options.
+  * [5f82f44] gbp: add --version option (Closes: #758909)
+  * [04aa92f] Allow to list all available gbp subcommands
+  * [68c053f] Unify doc strings a bit since they now show up with --list-cmds
+  * [6d510ce] bash completion: make command list dynamic.
+    Use "gbp --list-cmds" so we don't have to hardcode the available
+    commands and get support for the RPM ones as they show up.
+
+  [ Kamal Mostafa ]
+  * [6823e51] buildpackage: Make debian-tag message configurable via
+    --git-debian-tag-msg.
+
+ -- Guido Günther <agx@sigxcpu.org>  Sun, 24 Aug 2014 11:31:28 +0200
+
+git-buildpackage (0.6.16) experimental; urgency=medium
+
+  [ Markus Lehtonen ]
+  * Doc cleanups and reformatting
+  * [736b9d8] Introduce git-import-srpm tool.
+  * [ed228a2] import-srpm: add 'vendor' config option.
+    Intended to represent the distribution vendor (e.g. 'Debian').
+    Currently, this can be used in tag format strings.
+
+  [ Guido Günther ]
+  * [0b1fc0d] buildpackage: Also print tag name when tagging the Debian
+    release.  Based on a patch by Kamal Mostafa
+  * [2bf944f] Pass --no-pristine-tar to SRPM compnent tests
+    to avoid pristine-tar showing up in the matched branches
+  * [23090c9] Introduce git-buildpackage-rpm. Currently only including "gbp
+    import-srpm".
+  * Remove newly introducted spurious log outputs from tests
+
+ -- Guido Günther <agx@sigxcpu.org>  Mon, 28 Jul 2014 15:57:49 +0200
+
+git-buildpackage (0.6.15) unstable; urgency=medium
+
+  * [5cde49a] Revert "Determine build_dir upfront"
+    This reverts commit b2549fac19f2d666552291a4fcf2020ca0570834.
+    Closes: #749104
+
+ -- Guido Günther <agx@sigxcpu.org>  Sat, 24 May 2014 18:40:44 +0200
+
+git-buildpackage (0.6.14) unstable; urgency=medium
+
+  * [949ce84] Slightly improve usage output
+  * [045e607] gbp pq: document --force
+  * [817976e] Handle version format errors more gracefully.
+  * [b0390d1] Fix committer vs committer typos.
+    Thanks to Sandro Tosi (Closes: #748339)
+  * [dc231f2] Document that the patches must apply without fuzz
+  * [de77df7] pq: Print proper error message if we fail to apply the tree
+  * [54e4542] pq: Try harder to cleanup after a failed patch.
+    Thanks to Marco d'Itri for the repo to debug this
+  * [b2549fa] Determine build_dir upfront
+  * [a050942] Improve error reporting on failed commands.
+    (Closes: #748248)
+  * [030ff96] Improve error reporting on hooks.
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 22 May 2014 22:47:37 +0200
+
+git-buildpackage (0.6.13) unstable; urgency=medium
+
+  [ Guido Günther ]
+  * [14f6ded] Test option parser fallbacks more thoroughly
+    revealing another bug where we overwrote parsed values with defaults
+    (Closes: #733759)
+  * [03ada72] .gitignore: ignore editor backup files
+  * [4c6b067] Add minimal 'config' command.  This only allows to print single
+    config values so far. (Closes: #733470)
+  * [b393080] Import command not module. This matches the function name.
+  * [459d9bf] config: add decorator to add_option_* functions.
+    This allows us to build an internal list of valid options and print
+    these.
+
+  [ Markus Lehtonen ]
+  * [a8cfd88] Revert "GitRepository/add_remote_repo: fix the 'tags' argument"
+    Which caused an unwanted behavior of not fetching refs/heads at all --
+    only tags were fetched.
+    This reverts commit 5dd598fb8f2a9109189fad6cf631811f12ce2130
+  * [4131b90] docs: re-enable missing manpage
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 03 Apr 2014 21:31:38 +0200
+
+git-buildpackage (0.6.12) unstable; urgency=medium
+
+  * [89f3005] Use a much simpler version to fix the command name in --help
+    mostly reverting e1780f0. (Closes: #742907)
+
+ -- Guido Günther <agx@sigxcpu.org>  Sat, 29 Mar 2014 00:17:59 +0100
+
+git-buildpackage (0.6.11) unstable; urgency=medium
+
+  [ Guido Günther ]
+  * [38cfa6c] Request verbose output on bug reports
+  * [d000b0c] Remove incorrect docs about multiple filter options
+    (Closes: #718536)
+  * [fd440e2] Use a temporary directory.  This avoids file name collisions and
+    weired files in the working copy.
+  * [e1780f0] Fix command output.
+    The first line lacked the subcommand like:
+    $ gbp pull --help
+    Usage: gbp [options] - safely update a repository from remote
+    instead of
+    $ gbp pull --help
+    Usage: gbp pull [options] - safely update a repository from remote
+               ^^^^
+
+  [ Mario Lang ]
+  * [077dc35] Fix config file name
+
+  [ Markus Lehtonen ]
+  * [3808523] docs: add some missing sgml closing tags
+  * [d8f55da] GitRepository/get_commit_info: correctly handle file
+    renames/copies.  Use the '--no-renames' git command line option in order
+    to prevent two filenames per entry.
+  * [5dd598f] GitRepository/add_remote_repo: fix the 'tags' argument.
+    Explicitly use --tags in git arguments - otherwise tags might not be
+    fetched.
+  * [15d87fb] tests: more robust check for the default urgency level of dch.
+    The dch tool might not report it's version if it is incorrectly compiled.
+    Create a dummy changelog and parse it "manually" to determine the default
+    urgency level.
+  * [7774375] pq: minor log message typo fix
+  * [bbf21bf] ComponentTestBase: use regex matching in log checking
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 27 Mar 2014 22:27:38 +0100
+
+git-buildpackage (0.6.10) unstable; urgency=medium
+
+  * [f1bc542,1b0b17c] config: Don't pull in config defaults twice.
+    This would otherwise overwrite values set in the legacy config sections.
+    (Closes: #733759)
+  * [7e26f91] Remove cover-min-percentage.  It makes running single tests
+    harder than necessary since it requires the percentage also when using
+    "nose <testname>".
+  * [d533e0f] import_dsc: Create missing debian branch with
+    --create-missing-branches (Closes: #739888)
+  * [df32264] git-import-dsc: Document --create-missing-branches
+
+ -- Guido Günther <agx@sigxcpu.org>  Sun, 23 Feb 2014 17:56:47 +0100
+
+git-buildpackage (0.6.9) unstable; urgency=medium
+
+  [ Guido Günther ]
+  * [78f3673] Depend on newer devscripts.
+    These contain a uscan that handles repackaging at the right level and
+    won't let us pick up the wrong tarball name.
+    Thanks to gregor herrmann and all others involved (Closes: #635920)
+  * [7c64575] Avoid backtrace on config file parse errors
+    "gbp buildpackage" did this already but others didn't (Closes: #733759)
+  * [7b1eadd] Make parsing config file sections symmetric.
+    Always read the legacy command's config file section prior to the
+    subcommand's config file section.
+    Until now 'gbp <subcommand>' would read '[subcommand]' as well as
+    '[gbp-<subcommand>]' sections while 'gbp-<subcommand>' would only read
+    '[gbp-<subcommand>]' sections. (Closes: #733759)
+  * [49f0e44] Change the default of cleaner to /bin/true.
+    Running a clean command within version control by default nowadays
+    causes more trouble than it helps. It's unnecessary with
+    pbuilder/cowbuilder/sbuild and with export-dir. So change the default
+    from 'debuild clean' to a noop ('/bin/true'). (Closes: #670624)
+  * [d93c89f] import_orig: test error paths of find_source
+  * [daf249f] docs: improve docs on using upstream's git repo.
+    The documentation on using upstream's git directly instead of tarballs
+    was very terse. Add a step by step guide on how to get started and
+    how to update to new upstream versions.
+
+  [ Markus Lehtonen ]
+  * [e876beb] tests: adapt dch tests for older devscripts.
+    Determine the default urgency level by determining the version number of
+    the dch tool from command line.
+
+ -- Guido Günther <agx@sigxcpu.org>  Sat, 15 Feb 2014 11:45:00 +0100
+
 git-buildpackage (0.6.8) unstable; urgency=medium
 
   * [f5718b8] No need to document --verbose.  Properly document --help
@@ -9,7 +2322,7 @@ git-buildpackage (0.6.8) unstable; urgency=medium
   * [eec8ce3] Determine changes file name based on dpkg-buildpackage options
     (Closes: #732678)
 
- -- Guido Günther <agx@sigxcpu.org>  Fri, 20 Dec 2013 18:16:01 +0100
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 20 Dec 2013 17:21:20 +0100
 
 git-buildpackage (0.6.7) unstable; urgency=low
 
@@ -820,7 +3133,7 @@ git-buildpackage (0.6.0~git20120315) unstable; urgency=low
 
   * [3cac77f] docs: Fix path to gbp-configure-unpatched-source. Thanks to
     Tobias Frost (Closes: #664063)
-  * [2f08cbd] Parse author and comitter from changelog for native package too
+  * [2f08cbd] Parse author and committer from changelog for native package too
     (Closes: #662993)
 
  -- Guido Günther <agx@sigxcpu.org>  Thu, 15 Mar 2012 22:39:00 +0100
@@ -1268,7 +3581,7 @@ git-buildpackage (0.5.18) experimental; urgency=low
     level.
   * [9054ae1] git.force_head: quiet git reset so we don't see pointless 'HEAD
     is now at ...' messages during imports.
-  * [d36077c] Add --author-is-comitter and --author-date-is-comitter-date
+  * [d36077c] Add --author-is-committer and --author-date-is-committer-date
     commandline options (Closes: #610381)
 
   [ Jonathan Nieder ]

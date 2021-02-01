@@ -11,17 +11,18 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#    along with this program; if not, please see
+#    <http://www.gnu.org/licenses/>
 """Test L{gbp.pq}"""
 
 from . import context
+from . import testutils
 
-import testutils
 import gbp.log
 import gbp.scripts.import_dscs as import_dscs
 
 from gbp.errors import GbpError
+
 
 class StubGitImportDsc(object):
     """
@@ -40,6 +41,7 @@ class StubGitImportDsc(object):
         """
         return 1 if dsc.filename == self.failfile else 0
 
+
 class DscStub(object):
     def __init__(self, filename, version):
         self.filename = filename
@@ -53,9 +55,6 @@ class DscStub(object):
         version = filename[4]
         return cls(filename, version)
 
-# hook up stubs
-import_dscs.GitImportDsc = StubGitImportDsc
-import_dscs.DscFile = DscStub
 
 class TestImportDscs(testutils.DebianGitTestRepo):
     """Test L{gbp.scripts.import_dscs}'s """
@@ -66,9 +65,14 @@ class TestImportDscs(testutils.DebianGitTestRepo):
         self.orig_err = gbp.log.err
         gbp.log.err = self._check_err_msg
 
+        self.safed_GitImportDsc = import_dscs.GitImportDsc
+        self.safed_DscFile = import_dscs.DscFile
+        import_dscs.GitImportDsc = StubGitImportDsc
+        import_dscs.DscFile = DscStub
+
     def _check_err_msg(self, err):
         self.assertIsInstance(err, GbpError)
-        self.assertIn("Failed to import", err.message)
+        self.assertIn("Failed to import", str(err))
 
     def test_import_success(self):
         """Test importing success with stub"""
@@ -94,3 +98,5 @@ class TestImportDscs(testutils.DebianGitTestRepo):
         testutils.DebianGitTestRepo.tearDown(self)
         context.teardown()
 
+        import_dscs.GitImportDsc = self.safed_GitImportDsc
+        import_dscs.DscFile = self.safed_DscFile

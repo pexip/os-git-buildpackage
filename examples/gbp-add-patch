@@ -1,7 +1,7 @@
-#!/usr/bin/python -u
+#!/usr/bin/python3 -u
 # vim: set fileencoding=utf-8 :
 #
-# (C) 2010 Guido Guenther <agx@sigxcpu.org>
+# (C) 2010,2015 Guido Günther <agx@sigxcpu.org>
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation; either version 2 of the License, or
@@ -13,8 +13,8 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#    along with this program; if not, please see
+#    <http://www.gnu.org/licenses/>
 #
 """Add a patch from debian/patches and autocreate the commit message from the
 patch info
@@ -34,9 +34,10 @@ commits debian/patches/0010-bla-fasel with this changelog message:
 
 import re
 import sys
-import os, os.path
+import os
+import os.path
 from gbp.command_wrappers import (Command)
-from gbp.config import (GbpOptionParserDebian, GbpOptionGroup)
+from gbp.config import GbpOptionParserDebian
 from gbp.errors import GbpError
 from gbp.git import (GitRepositoryError, GitRepository)
 from gbp.patch_series import Patch
@@ -57,7 +58,7 @@ def build_commit_msg(repo, patch, options):
             closes += line + '\n'
 
     patch_name = os.path.basename(patch.path)
-    msg="""New patch %s
+    msg = """New patch %s
 
 %s
 %s
@@ -69,9 +70,9 @@ def main(argv):
     retval = 0
 
     parser = GbpOptionParserDebian(command=os.path.basename(argv[0]), prefix='',
-                             usage='%prog [options] - add a new patch')
+                                   usage='%prog [options] - add a new patch')
     parser.add_config_file_option(option_name="meta-closes", dest="meta_closes",
-                      help="Meta tags for the bts close commands, default is '%(meta-closes)s'")
+                                  help="Meta tags for the bts close commands, default is '%(meta-closes)s'")
     parser.add_option("-e", "--edit", action="store_true", dest="edit", default=False,
                       help="edit commit message before committing")
     parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False,
@@ -85,7 +86,8 @@ def main(argv):
     try:
         repo = GitRepository(os.path.curdir)
     except GitRepositoryError:
-        print >>sys.stderr, "%s is not a git repository" % (os.path.abspath('.'))
+        print("%s is not a git repository" % os.path.abspath('.'),
+              file=sys.stderr)
         return 1
 
     try:
@@ -105,11 +107,12 @@ def main(argv):
     except GitRepositoryError:
         retval = 1
     except GbpError as err:
-        if len(err.__str__()):
-            print >>sys.stderr, err
+        if str(err):
+            print(err, file=sys.stderr)
         retval = 1
 
     return retval
+
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))

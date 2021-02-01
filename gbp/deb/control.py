@@ -12,20 +12,23 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#    along with this program; if not, please see
+#    <http://www.gnu.org/licenses/>
 """A Debian Control file"""
 
 import email
 import os
 
+
 class NoControlError(Exception):
     """No control found"""
     pass
 
+
 class ParseControlError(Exception):
     """Problem parsing control"""
     pass
+
 
 class Control(object):
     """A Debian control"""
@@ -64,15 +67,15 @@ class Control(object):
 
     @property
     def name(self):
-        """The packges name"""
+        """The name of the package"""
         return self._control['Source']
 
     @property
     def section(self):
-        """The packges section"""
+        """The section of the package"""
         return self._control['Section']
 
     @property
     def priority(self):
-        """The packges priority"""
+        """The priority of the package"""
         return self._control['Priority']

@@ -1,5 +1,5 @@
 #compdef gbp
-#description build debian packages from a git repository
+#description build Debian packages from a Git repository
 
 __gbp_common_options() {
 	local prefix="$1"
@@ -76,7 +76,7 @@ _gbp-buildpackage() {
 	__gbp_tag_format_options git-
 	__gbp_tag_sign_options git-
 	_arguments \
-	  '--git-ignore-new[build with uncommited changes in the source tree]' \
+	  '--git-ignore-new[build with uncommitted changes in the source tree]' \
 	  '--git-no-ignore-new[negates --git-ignore-new]' \
 	  '--git-tag[create a tag after a successful build]' \
 	  '--git-tag-only[do not build, only tag and run the posttag hook]' \
@@ -131,12 +131,13 @@ _gbp-dch () {
 	__gbp_tag_format_options
 
 	_arguments \
-		'--git-ignore-branch[build although debian-branch != current branch]' \
+		'--ignore-branch[build although debian-branch != current branch]' \
 		'--since=-[Start point for reading commits]:commitish:' \
 		'--auto[Guess the last commit documented in the changelog]' \
 		'(--meta --no-meta)--meta[Parse meta tags]' \
 		'(--meta --no-meta)--no-meta[Do not parse meta tags]' \
 		'--meta-closes=-[What meta tags to look for  to  generate  bug-closing  changelog entries]' \
+		'--meta-closes-bugnum=-[What bug number format to look for to generate bug-closing changelog entries]' \
 		'(--full --no-full)--full[Include the full commit message]' \
 		'(--full --no-full)--no-full[Do not include the full commit message]' \
 		'(--snapshot -S)'{-S,--snapshot}'[Create a snapshot release entry]' \
@@ -156,7 +157,7 @@ _gbp-dch () {
 		'--git-author[Use git name configuration for changelog signature]' \
 		'(--multimaint-merge --no-multimaint-merge)--multimaint-merge[Merge commits by maintainer]' \
 		'(--multimaint-merge --no-multimaint-merge)--multimaint-merge[Do not merge commits by maintainer]' \
-		'--spawn-editor=[Spawn an editor]:when:(always snapshot release)' \
+		'--spawn-editor=[Spawn an editor]:when:(always never snapshot release)' \
 		'--commit-msg=[Commit message format string]' \
 		'--commit[Commit the generated changelog]' \
 		'*:Paths:_files -/'
@@ -169,7 +170,6 @@ _gbp-import-dsc() {
 	__gbp_tag_sign_options
 	_arguments \
 		'--filter=-[Filter out files]' \
-		'--download=-[Download the source package]' \
 		'--allow-unauthenticated[Skip signature verification on downloads]' \
 		'--allow-same-version[Import a package with the same debian version]' \
 		'--author-is-committer[Use the author identity as committer identity]' \
@@ -181,7 +181,7 @@ _gbp-import-dsc() {
 
 _gbp-import-dscs() {
 	# same options
-	_gbp-import_dsc
+	_gbp-import-dsc
 	_arguments \
 		'--debsnap[Fetch snapshots from snapshots.debian.org]' \
 		'--ignore-repo-config[Ignore options in gbp.conf]'
@@ -320,7 +320,7 @@ _gbp-buildpackage() {
 	__gbp_tag_format_options git-
 	__gbp_tag_sign_options git-
 	_arguments \
-	  '--git-ignore-new[build with uncommited changes in the source tree]' \
+	  '--git-ignore-new[build with uncommitted changes in the source tree]' \
 	  '--git-no-ignore-new[negates --git-ignore-new]' \
 	  '--git-tag[create a tag after a successful build]' \
 	  '--git-tag-only[do not build, only tag and run the posttag hook]' \
@@ -375,12 +375,13 @@ _gbp-dch () {
 	__gbp_tag_format_options
 
 	_arguments \
-		'--git-ignore-branch[build although debian-branch != current branch]' \
+		'--ignore-branch[build although debian-branch != current branch]' \
 		'--since=-[Start point for reading commits]:commitish:' \
 		'--auto[Guess the last commit documented in the changelog]' \
 		'(--meta --no-meta)--meta[Parse meta tags]' \
 		'(--meta --no-meta)--no-meta[Do not parse meta tags]' \
 		'--meta-closes=-[What meta tags to look for  to  generate  bug-closing  changelog entries]' \
+		'--meta-closes-bugnum=-[What bug number format to look for to generate bug-closing changelog entries]' \
 		'(--full --no-full)--full[Include the full commit message]' \
 		'(--full --no-full)--no-full[Do not include the full commit message]' \
 		'(--snapshot -S)'{-S,--snapshot}'[Create a snapshot release entry]' \
@@ -400,7 +401,7 @@ _gbp-dch () {
 		'--git-author[Use git name configuration for changelog signature]' \
 		'(--multimaint-merge --no-multimaint-merge)--multimaint-merge[Merge commits by maintainer]' \
 		'(--multimaint-merge --no-multimaint-merge)--multimaint-merge[Do not merge commits by maintainer]' \
-		'--spawn-editor=[Spawn an editor]:when:(always snapshot release)' \
+		'--spawn-editor=[Spawn an editor]:when:(always never snapshot release)' \
 		'--commit-msg=[Commit message format string]' \
 		'--commit[Commit the generated changelog]' \
 		'*:Paths:_files -/'
@@ -413,7 +414,6 @@ _gbp-import-dsc() {
 	__gbp_tag_sign_options
 	_arguments \
 		'--filter=-[Filter out files]' \
-		'--download=-[Download the source package]' \
 		'--allow-unauthenticated[Skip signature verification on downloads]' \
 		'--allow-same-version[Import a package with the same debian version]' \
 		'--author-is-committer[Use the author identity as committer identity]' \
@@ -425,7 +425,7 @@ _gbp-import-dsc() {
 
 _gbp-import-dscs() {
 	# same options
-	_gbp-import_dsc
+	_gbp-import-dsc
 	_arguments \
 		'--debsnap[Fetch snapshots from snapshots.debian.org]' \
 		'--ignore-repo-config[Ignore options in gbp.conf]'

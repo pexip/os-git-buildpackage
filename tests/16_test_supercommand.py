@@ -11,38 +11,43 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#    along with this program; if not, please see
+#    <http://www.gnu.org/licenses/>
 """Test L{gbp} command wrapper"""
 
-import sys
 import unittest
 import gbp.scripts.supercommand
+
+from tests.testutils import capture_stdout, capture_stderr
+
 
 class TestSuperCommand(unittest.TestCase):
 
     def test_import(self):
         """Test the importer itself"""
-        self.assertRaises(ImportError,
-                          gbp.scripts.supercommand.import_command,
-                          'not.allowed')
-        self.assertRaises(ImportError,
-                          gbp.scripts.supercommand.import_command,
-                          'not/allowed')
-        self.assertRaises(ImportError,
-                          gbp.scripts.supercommand.import_command,
-                          '0notallowed')
+        with self.assertRaises(ImportError):
+            gbp.scripts.supercommand.import_command('not.allowed')
+        with self.assertRaises(ImportError):
+            gbp.scripts.supercommand.import_command('not/allowed')
+        with self.assertRaises(ImportError):
+            gbp.scripts.supercommand.import_command('0notallowed')
         self.assertIsNotNone(gbp.scripts.supercommand.import_command('pq'))
 
     def test_invalid_command(self):
         """Test if we fail correctly with an invalid command"""
-        old_stderr = sys.stderr
-        with open('/dev/null', 'w') as sys.stderr:
+        with capture_stderr():
             self.assertEqual(gbp.scripts.supercommand.supercommand(
                              ['argv0', 'asdf']), 2)
             self.assertEqual(gbp.scripts.supercommand.supercommand(
                              ['argv0', 'asdf', '--verbose']), 2)
-        sys.stderr = old_stderr
+
+    def test_list_commands(self):
+        """Invoking with --list-cmds must not raise an error"""
+        with capture_stdout() as out:
+            self.assertEqual(gbp.scripts.supercommand.supercommand(['argv0',
+                                                                    '--list-cmds']), 0)
+            for cmd in ['import-orig', 'create-remote-repo', 'pq']:
+                self.assertIn("%s - " % cmd, out.output())
 
     def test_help_command(self):
         """Invoking with --help must not raise an error"""
@@ -52,4 +57,3 @@ class TestSuperCommand(unittest.TestCase):
     def test_missing_arg(self):
         self.assertEqual(gbp.scripts.supercommand.supercommand(
                          ['argv0']), 1)
-
