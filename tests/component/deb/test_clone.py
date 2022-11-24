@@ -61,10 +61,12 @@ class TestClone(ComponentTestBase):
         """Test that cloning from vcs-git urls works"""
         dest = os.path.join(self._tmpdir,
                             'cloned_repo')
-        ret = clone(['arg0', "vcsgit:libvirt-glib", dest])
+        ret = clone(['arg0', "--add-upstream-vcs", "vcsgit:libvirt-glib", dest])
         self.assertEquals(ret, 0)
         cloned = ComponentTestGitRepository(dest)
         self._check_repo_state(cloned, 'debian/sid', ['debian/sid', 'upstream/latest'])
+        assert cloned.has_remote_repo("upstreamvcs")
+        assert 'upstreamvcs/master' in cloned.get_remote_branches()
 
     @skipUnless(os.getenv("GBP_NETWORK_TESTS"), "network tests disabled")
     def test_clone_vcsgit_fail(self):
@@ -82,3 +84,48 @@ class TestClone(ComponentTestBase):
         self.assertEquals(ret, 0)
         cloned = ComponentTestGitRepository(dest)
         self._check_repo_state(cloned, 'master', ['master'])
+
+    @RepoFixtures.native()
+    def test_clone_without_attrs(self, repo):
+        """Test that cloning a repo without harmful attrs does nothing"""
+        dest = os.path.join(self._tmpdir,
+                            'cloned_repo')
+        clone(['arg0',
+               repo.path, dest])
+        cloned = ComponentTestGitRepository(dest)
+        self._check_repo_state(cloned, 'master', ['master'])
+
+        attrs_file = os.path.join(dest, '.git', 'info', 'attributes')
+        # file may be empty or absent
+        self.assertFalse(os.path.exists(attrs_file) and os.path.getsize(attrs_file),
+                         "%s is non-empty" % attrs_file)
+
+    @RepoFixtures.native()
+    def test_clone_with_attrs(self, repo):
+        """Test that cloning a repo with harmful attrs disarms them"""
+        with open('.gitattributes', 'w') as f:
+            f.write('# not empty')
+        repo.add_files('.gitattributes')
+        repo.commit_files('.gitattributes', msg="add .gitattributes")
+
+        dest = os.path.join(self._tmpdir,
+                            'cloned_repo')
+        clone(['arg0',
+               repo.path, dest])
+        cloned = ComponentTestGitRepository(dest)
+        self._check_repo_state(cloned, 'master', ['master'])
+
+        attrs_file = os.path.join(dest, '.git', 'info', 'attributes')
+        ok_(os.path.exists(attrs_file), "%s is missing" % attrs_file)
+
+        with open(attrs_file) as f:
+            attrs = sorted(f.read().splitlines())
+
+        expected_gitattrs = [
+            '# Added by git-buildpackage to disable .gitattributes found in the upstream tree',
+            '* -export-ignore',
+            '* -export-subst',
+            '* dgit-defuse-attrs',
+            '[attr]dgit-defuse-attrs  -text -eol -crlf -ident -filter -working-tree-encoding',
+        ]
+        self.assertEquals(attrs, expected_gitattrs)

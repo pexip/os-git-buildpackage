@@ -6,13 +6,15 @@ TEST_LOCALE?=C.UTF-8
 all: syntax-check test
 
 all+net:
-	$(MAKE) GBP_NETWORK_TESTS=1 all
+	GBP_NETWORK_TESTS=1 $(MAKE) all
 
 test:
+	export HOME=/nonexisting;                       \
 	export GIT_AUTHOR_NAME="Gbp Tests";		\
 	export GIT_AUTHOR_EMAIL=tests@example.com;	\
 	export GIT_COMMITTER_NAME=$$GIT_AUTHOR_NAME;	\
 	export GIT_COMMITTER_EMAIL=$$GIT_AUTHOR_EMAIL;	\
+	export DEBEMAIL=$$GIT_AUTHOR_EMAIL;             \
 	PYTHONPATH=.					\
 	LC_ALL=$(TEST_LOCALE) python3 setup.py nosetests $(NOSE_OPTS)
 
@@ -20,12 +22,15 @@ syntax-check:
 	flake8 $(FLAKE_OPTS)
 	flake8 $(FLAKE_OPTS) $(PY_EXAMPLES)
 
+type-check:
+	mypy gbp
+
 docs:
 	$(MAKE) -C docs
 	$(MAKE) apidocs
 
 apidocs:
 	mkdir -p build
-	pydoctor -v --config=.pydoctor.cfg
+	pydoctor -v gbp tests/doctests/
 
 .PHONY: docs

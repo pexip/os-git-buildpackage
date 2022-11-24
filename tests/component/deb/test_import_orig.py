@@ -164,6 +164,14 @@ class TestImportOrig(ComponentTestBase):
             eq_(old, new, "Checksum %s of regenerated tarball %s does not match original %s" %
                 (f, old, new))
 
+    @RepoFixtures.quilt30(DEFAULT_DSC, opts=['--pristine-tar'])
+    def test_update_from_upstream_branch(self, repo):
+        orig = self._orig('2.8')
+        repo.checkout('upstream')
+        ok_(import_orig(['arg0', '--no-interactive', '--pristine-tar', orig]) == 0)
+        self._check_repo_state(repo, 'upstream', ['master', 'upstream', 'pristine-tar'],
+                               tags=['debian/2.6-2', 'upstream/2.6', 'upstream/2.8'])
+
     def test_tag_exists(self):
         """Test that importing an already imported version fails"""
         repo = GitRepository.create(self.pkg)
@@ -258,7 +266,8 @@ class TestImportOrig(ComponentTestBase):
                                tags=['debian/2.6-2', 'upstream/2.6', 'upstream/2.8'])
         self._check_component_tarballs(repo, ['foo/test1', 'foo/test2'])
 
-        ok_('README' not in repo.ls_tree('HEAD'),
+        ok_(b'COPYING' in repo.ls_tree('HEAD'))
+        ok_(b'README' not in repo.ls_tree('HEAD'),
             "README not filtered out of %s" % repo.ls_tree('HEAD'))
         tar = '../hello-debhelper_2.8.orig.tar.gz'
 
@@ -299,9 +308,10 @@ class TestImportOrig(ComponentTestBase):
                                tags=['debian/2.6-2', 'upstream/2.6', 'upstream/2.8'])
         self._check_component_tarballs(repo, ['foo/test1', 'foo/test2'])
 
-        ok_('README' not in repo.ls_tree('HEAD'),
+        ok_(b'COPYING' in repo.ls_tree('HEAD'))
+        ok_(b'README' not in repo.ls_tree('HEAD'),
             "README not filtered out of %s" % repo.ls_tree('HEAD'))
-        ok_('TODO' not in repo.ls_tree('HEAD'),
+        ok_(b'TODO' not in repo.ls_tree('HEAD'),
             "TODO not filtered out of %s" % repo.ls_tree('HEAD'))
         tar = '../hello-debhelper_2.8.orig.tar.gz'
 
@@ -495,7 +505,9 @@ class TestImportOrig(ComponentTestBase):
         Test that importing works if repo is a git submodule (#674015)
         """
         parent_repo = GitRepository.create('../parent')
+        os.environ['GIT_ALLOW_PROTOCOL'] = 'file'
         parent_repo.add_submodule(repo.path)
+        del os.environ['GIT_ALLOW_PROTOCOL']
         parent_repo.update_submodules(init=True, recursive=True)
         submodule = GitRepository(os.path.join(parent_repo.path,
                                                'hello-debhelper'))
@@ -566,3 +578,18 @@ class TestImportOrig(ComponentTestBase):
         self.check_hook_vars('../postunpack', ["GBP_GIT_DIR",
                                                "GBP_TMP_DIR",
                                                "GBP_SOURCES_DIR"])
+
+    @RepoFixtures.quilt30(DEFAULT_DSC, opts=['--pristine-tar'])
+    @skipUnless(os.getenv("GBP_NETWORK_TESTS"), "network tests disabled")
+    def test_uscan(self, repo):
+        """Test that importing via uscan works"""
+        with open("debian/watch", 'w+', encoding='utf-8') as f:
+            f.write("""version=4
+https://git.sigxcpu.org/cgit/gbp/deb-testdata/plain/dsc-3.0/ \
+  @PACKAGE@_@ANY_VERSION@\\.orig\\.tar\\.gz
+""")
+        repo.add_files(["debian/watch"])
+        repo.commit_files("debian/watch", msg="Add watch file")
+        ok_(import_orig(['arg0', '--uscan', '--no-interactive', '--no-pristine-tar']) == 0)
+        self._check_repo_state(repo, 'master', self.def_branches,
+                               tags=['debian/2.6-2', 'upstream/2.6', 'upstream/2.8'])

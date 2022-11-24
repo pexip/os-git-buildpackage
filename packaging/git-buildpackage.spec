@@ -1,15 +1,24 @@
 # Add --without docs rpmbuild option, i.e. docs are enabled by default
 %bcond_without docs
+%if 0%{?centos_ver} && 0%{?centos_ver} >= 7
+%define __python /usr/bin/python3
+%endif
+%if 0%{?centos_ver} && 0%{?centos_ver} == 7
+%define __python3 /usr/bin/python3
+%endif
 
 Name:       git-buildpackage
 Summary:    Build packages from git
-Version:    0.9.22
+Version:    0.9.30
 Release:    0
 Group:      Development/Tools/Building
 License:    GPLv2
 BuildArch:  noarch
 URL:        https://honk.sigxcpu.org/piki/projects/git-buildpackage/
 Source0:    %{name}_%{version}.tar.gz
+%if 0%{?centos_ver} && 0%{?centos_ver} >= 7
+Patch0: 0001-Fix-path-to-docbook-dtd-file.patch
+%endif
 
 # Conditional package names for requirements
 %if 0%{?fedora} || 0%{?centos_ver} >= 7
@@ -31,25 +40,41 @@ Source0:    %{name}_%{version}.tar.gz
 %if 0%{?suse_version}
 %define python_pkg_name python-base
 %else
-%define python_pkg_name python
+%define python_pkg_name python3
 %endif
 
 %if 0%{?tizen_version:1}
 %define rpm_python_pkg_name python-rpm
 %else
+%if 0%{?centos_ver} && 0%{?centos_ver} == 7
 %define rpm_python_pkg_name rpm-python
+%else
+%define rpm_python_pkg_name python3-rpm
+%endif
 %endif
 
 Requires:   %{name}-common = %{version}-%{release}
 Requires:   %{dpkg_pkg_name}
+%if 0%{?fedora} || 0%{?centos_ver} && 0%{?centos_ver} == 7
 Requires:   devscripts
+%endif
 BuildRequires:  python3
 BuildRequires:  python3-setuptools
 
 %if %{with docs}
+%if 0%{?centos_ver} && 0%{?centos_ver} >= 8
+BuildRequires:  docbook2X
+%else
+%if 0%{?centos_ver} && 0%{?centos_ver} == 7
+BuildRequires:  docbook-utils
+%else
 BuildRequires:  docbook2x
+%endif
+%endif
 BuildRequires:  gtk-doc
+%if 0%{?suse_version}
 BuildRequires:  libxslt-tools
+%endif
 %if 0%{?fedora}
 BuildRequires:  perl-podlators
 %endif
@@ -130,7 +155,9 @@ Debian and the RPM tool set.
 
 %prep
 %setup -q -n %{name}-%{version}
-
+%if 0%{?centos_ver} && 0%{?centos_ver} >= 7
+%patch0 -p1
+%endif
 
 
 %build
@@ -153,7 +180,7 @@ GIT_CEILING_DIRECTORIES=%{_builddir} \
 
 %install
 rm -rf %{buildroot}
-WITHOUT_NOSETESTS=1 %{__python3} ./setup.py install --root=%{buildroot} --prefix=/usr --install-lib=%{python_sitelib}
+DEB_PYTHON_INSTALL_LAYOUT=deb_system WITHOUT_NOSETESTS=1 %{__python3} ./setup.py install --root=%{buildroot} --prefix=/usr --install-lib=%{python_sitelib}
 find %{buildroot} -name __pycache__ | xargs -r rm -r
 mkdir -p %{buildroot}/usr/share/%{name}
 mv %{buildroot}/usr/bin/gbp-builder-mock %{buildroot}/usr/share/%{name}/
@@ -228,11 +255,17 @@ done
 %{python_sitelib}/gbp/scripts/pristine_tar.py*
 %{python_sitelib}/gbp/scripts/pull.py*
 %{python_sitelib}/gbp/scripts/push.py*
+%{python_sitelib}/gbp/scripts/setup_gitattributes.py*
 %{python_sitelib}/gbp/scripts/supercommand.py*
 %{python_sitelib}/gbp/scripts/tag.py*
 %{python_sitelib}/gbp/scripts/common/*.py*
 %{python_sitelib}/gbp/git/*.py*
 %{python_sitelib}/gbp/pkg/*.py*
+%exclude %{python_sitelib}/gbp/__pycache__/*.pyc
+%exclude %{python_sitelib}/gbp/git/__pycache__/*.pyc
+%exclude %{python_sitelib}/gbp/pkg/__pycache__/*.pyc
+%exclude %{python_sitelib}/gbp/scripts/__pycache__/*.pyc
+%exclude %{python_sitelib}/gbp/scripts/common/__pycache__/*.pyc
 %config %{_sysconfdir}/git-buildpackage
 %if %{with docs}
 %{_mandir}/man1/gbp.1*
@@ -241,6 +274,7 @@ done
 %{_mandir}/man1/gbp-pristine-tar.1*
 %{_mandir}/man1/gbp-pull.1*
 %{_mandir}/man1/gbp-push.1*
+%{_mandir}/man1/gbp-setup-gitattributes.1*
 %{_mandir}/man1/gbp-tag.1*
 %{_mandir}/man5/*.5*
 %endif

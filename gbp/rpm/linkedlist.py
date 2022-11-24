@@ -16,7 +16,7 @@
 #    <http://www.gnu.org/licenses/>
 """Simple implementation of a doubly linked list"""
 
-import collections
+import collections.abc
 
 import gbp.log
 
@@ -37,7 +37,7 @@ class LinkedListNode(object):
         """Get data stored into node"""
         if self._data is None:
             gbp.log.debug("BUG: referencing a deleted node!")
-            return("")
+            return ("")
         return self._data
 
     def set_data(self, data):
@@ -68,7 +68,7 @@ class LinkedListNode(object):
         self._data = None
 
 
-class LinkedListIterator(collections.Iterator):
+class LinkedListIterator(collections.abc.Iterator):
     """Iterator for the linked list"""
 
     def __init__(self, obj):
@@ -86,7 +86,7 @@ class LinkedListIterator(collections.Iterator):
         return self.__next__()
 
 
-class LinkedList(collections.Iterable):
+class LinkedList(collections.abc.Iterable):
     """Doubly linked list"""
 
     def __init__(self):

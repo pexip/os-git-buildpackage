@@ -53,7 +53,7 @@ def build_parser(name):
     parser.add_config_file_option(option_name="color", dest="color", type='tristate')
     parser.add_config_file_option(option_name="color-scheme",
                                   dest="color_scheme")
-    parser.add_option("--verbose", action="store_true", dest="verbose",
+    parser.add_option("-v", "--verbose", action="store_true", dest="verbose",
                       default=False, help="verbose command execution")
     return parser
 
@@ -133,6 +133,8 @@ def main(argv):
     try:
         source = DebianSource(repo.path)
         branch = repo.branch
+        dtag = None
+
         if not options.ignore_branch:
             if branch != options.debian_branch:
                 gbp.log.err("You are not on branch '%s' but %s" %
@@ -148,9 +150,13 @@ def main(argv):
             if repo.has_tag(dtag):
                 to_push['tags'].append(dtag)
 
-        if source.is_releasable() and branch:
+        if branch:
             ref = 'refs/heads/%s' % branch
-            to_push['refs'].append((ref, get_push_src(repo, ref, dtag)))
+            if source.is_releasable() and dtag:
+                to_push['refs'].append((ref, get_push_src(repo, ref, dtag)))
+            elif not dtag:
+                # --debian-tag='': Push branch up to tip
+                to_push['refs'].append((ref, get_push_src(repo, ref, ref)))
 
         if not source.is_native():
             if options.upstream_tag != '':
@@ -167,8 +173,15 @@ def main(argv):
                 commit, _ = repo.get_pristine_tar_commit(source)
                 if commit:
                     ref = 'refs/heads/pristine-tar'
-                    to_push['refs'].append((ref, get_push_src(repo, ref, commit)))
-
+                    # If we push to the default we only push if our notion of the remote
+                    # branch doesn't have the commit already (See #1001163)
+                    if dest == get_remote(repo, repo.branch):
+                        target = repo.get_merge_branch('pristine-tar')
+                        if not repo.branch_contains(target, commit, remote=True):
+                            to_push['refs'].append((ref, get_push_src(repo, ref, commit)))
+                    else:
+                        # TODO: Needs to check remote first, (See #1001163)
+                        to_push['refs'].append((ref, get_push_src(repo, ref, commit)))
         if do_push(repo, [dest], to_push, dry_run=options.dryrun):
             retval = 0
         else:

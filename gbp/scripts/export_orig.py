@@ -103,7 +103,7 @@ def pristine_tar_build_origs(repo, source, output_dir, options):
 
     if not repo.has_branch(repo.pristine_tar_branch):
         gbp.log.warn('Pristine-tar branch "%s" not found' %
-                     repo.pristine_tar.branch)
+                     repo.pristine_tar_branch)
 
     comp = Compressor(options.comp_type)
     pristine_tar_prepare_orig_tree(repo, source, options)
@@ -165,7 +165,7 @@ def maybe_pristine_tar_commit(repo, source, options, output_dir, orig_files):
     else:
         upstream_tree = git_archive_get_upstream_tree(repo, source, options)
         archive = os.path.join(output_dir, orig_files[0])
-        gbp.log.debug("Adding %s to pristine-tar branch" % archive)
+        gbp.log.info("Adding %s to pristine-tar branch" % archive)
         repo.pristine_tar.commit(archive, upstream_tree)
 
 
@@ -289,7 +289,7 @@ def build_parser(name):
     for group in [tag_group, orig_group, branch_group]:
         parser.add_option_group(group)
 
-    parser.add_option("--verbose", action="store_true", dest="verbose", default=False,
+    parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False,
                       help="verbose command execution")
     parser.add_config_file_option(option_name="color", dest="color", type='tristate')
     parser.add_config_file_option(option_name="color-scheme",
@@ -309,6 +309,8 @@ def build_parser(name):
                                       help="use upstream signature, default is auto", type='tristate')
     orig_group.add_config_file_option("component", action="append", metavar='COMPONENT',
                                       dest="components")
+    orig_group.add_boolean_config_file_option(option_name="pristine-tar-commit",
+                                              dest="pristine_tar_commit")
     branch_group.add_config_file_option(option_name="upstream-branch", dest="upstream_branch")
     branch_group.add_boolean_config_file_option(option_name="submodules", dest="with_submodules")
     return parser

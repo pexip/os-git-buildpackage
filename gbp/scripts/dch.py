@@ -19,6 +19,7 @@
 
 import os.path
 import re
+import typing
 import sys
 import shutil
 import gbp.command_wrappers as gbpc
@@ -33,7 +34,7 @@ from gbp.deb.changelog import ChangeLog, NoChangeLogError
 from gbp.scripts.common import ExitCodes, maybe_debug_raise
 from gbp.scripts.common.hook import Hook
 
-user_customizations = {}
+user_customizations: typing.Dict[str, str] = {}
 snapshot_re = re.compile(r'\s*\*\* SNAPSHOT build @(?P<commit>[a-z0-9]+)\s+\*\*')
 
 
@@ -49,6 +50,9 @@ def guess_version_from_upstream(repo, upstream_tag_format, upstream_branch, cp=N
                                                     upstream_branch,
                                                     epoch=epoch,
                                                     debian_release=False)
+        if version is None:
+            gbp.log.warn("Failed to find upstream version tag")
+            return None
         gbp.log.debug("Found upstream version %s." % version)
         if compare_versions(version, cmp_version) > 0:
             return "%s-1" % version
@@ -393,6 +397,8 @@ def build_parser(name):
     version_group.add_option("--security", dest="security", action="store_true", default=False,
                              help="Increment the Debian release number for a security upload and "
                              "add a security upload changelog comment.")
+    version_group.add_option("-l", "--local", dest="local_suffix", metavar="SUFFIX",
+                             help="Add a suffix to the Debian version number for a local build.")
     version_group.add_boolean_config_file_option(option_name="git-author", dest="use_git_author")
     commit_group.add_boolean_config_file_option(option_name="meta", dest="meta")
     commit_group.add_config_file_option(option_name="meta-closes", dest="meta_closes")
@@ -457,6 +463,12 @@ def main(argv):
 
     try:
         old_cwd = os.path.abspath(os.path.curdir)
+        for var in ['EMAIL', 'DEBEMAIL']:
+            if var in os.environ and os.environ[var]:
+                break
+        else:
+            raise GbpError("Either 'EMAIL' or 'DEBEMAIL' must be set in the environment for 'dch' to work")
+
         try:
             repo = DebianGitRepository('.', toplevel=False)
             os.chdir(repo.path)
@@ -498,7 +510,7 @@ def main(argv):
         add_section = False
         # add a new changelog section if:
         if (options.new_version or options.bpo or options.nmu or options.qa or
-                options.team or options.security):
+                options.team or options.security or options.local_suffix):
             if options.bpo:
                 version_change['increment'] = '--bpo'
             elif options.nmu:
@@ -509,6 +521,8 @@ def main(argv):
                 version_change['increment'] = '--team'
             elif options.security:
                 version_change['increment'] = '--security'
+            elif options.local_suffix:
+                version_change['increment'] = '--local=%s' % options.local_suffix
             else:
                 version_change['version'] = options.new_version
             # the user wants to force a new version
