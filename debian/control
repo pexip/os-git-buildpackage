@@ -31,7 +31,7 @@ Vcs-Git: git://honk.sigxcpu.org/git/git-buildpackage.git
 Vcs-Browser: https://honk.sigxcpu.org/gitweb/?p=git-buildpackage.git
 Homepage: https://honk.sigxcpu.org/piki/projects/git-buildpackage/
 X-Python-Version: >= 2.6
-XS-Pexip-Upstream: http://archive.ubuntu.com/ubuntu/ trusty
+XS-Pexip-Upstream: http://ftp.debian.org/debian/ bullseye
 
 Package: git-buildpackage
 Architecture: all
