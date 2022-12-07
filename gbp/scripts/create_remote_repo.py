@@ -1,6 +1,6 @@
 # vim: set fileencoding=utf-8 :
 #
-# (C) 2010,2012 Guido Günther <agx@sigxcpu.org>
+# (C) 2010,2012,2015,2016 Guido Günther <agx@sigxcpu.org>
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation; either version 2 of the License, or
@@ -12,25 +12,31 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#    along with this program; if not, please see
+#    <http://www.gnu.org/licenses/>
 #
 # Based on the aa-create-git-repo and dom-new-git-repo shell scripts
-"""Create a remote repo based on the current one"""
+"""Create a remote Git repository based on the current one"""
 
 import sys
-import os, os.path
-import urlparse
+import os
+import urllib.parse
 import subprocess
-import tty, termios
+import tty
+import termios
 import re
+import configparser
+
 from gbp.deb.changelog import ChangeLog, NoChangeLogError
 from gbp.command_wrappers import (CommandExecFailed, GitCommand)
 from gbp.config import (GbpOptionParserDebian, GbpOptionGroup)
 from gbp.errors import GbpError
 from gbp.git import GitRepositoryError
 from gbp.deb.git import DebianGitRepository
+from gbp.scripts.common import ExitCodes
+
 import gbp.log
+
 
 def print_config(remote, branches):
     """
@@ -50,65 +56,31 @@ def print_config(remote, branches):
             merge = refs/heads/bar
     """
 
-    print """[remote "%(name)s"]
+    print("""[remote "%(name)s"]
         url = %(url)s
-        fetch = +refs/heads/*:refs/remotes/%(name)s/*""" % remote
+        fetch = +refs/heads/*:refs/remotes/%(name)s/*""" % remote)
 
     for branch in branches:
-        print "        push = %s" % branch
+        print("        push = %s" % branch)
 
     for branch in branches:
-        print """[branch "%s"]
+        print("""[branch "%s"]
         remote = %s
-        merge = refs/heads/%s""" % (branch, remote['name'], branch)
+        merge = refs/heads/%s""" % (branch, remote['name'], branch))
 
-def sort_dict(d):
-    """Return a sorted list of (key, value) tuples"""
-    s = []
-    for key in sorted(d.iterkeys()):
-        s.append((key, d[key]))
-    return s
 
-def parse_url(remote_url, name, pkg, template_dir=None):
+def parse_url(remote_url, name, pkg, template_dir=None, bare=True):
     """
     Sanity check our remote URL
 
-    >>> sort_dict(parse_url("ssh://host/path/%(pkg)s", "origin", "package"))
-    [('base', ''), ('dir', '/path/package'), ('host', 'host'), ('name', 'origin'), ('pkg', 'package'), ('port', None), ('scheme', 'ssh'), ('template-dir', None), ('url', 'ssh://host/path/package')]
-
-    >>> sort_dict(parse_url("ssh://host:22/path/repo.git", "origin", "package"))
-    [('base', ''), ('dir', '/path/repo.git'), ('host', 'host'), ('name', 'origin'), ('pkg', 'package'), ('port', '22'), ('scheme', 'ssh'), ('template-dir', None), ('url', 'ssh://host:22/path/repo.git')]
-
-    >>> sort_dict(parse_url("ssh://host:22/~/path/%(pkg)s.git", "origin", "package"))
-    [('base', '~/'), ('dir', 'path/package.git'), ('host', 'host'), ('name', 'origin'), ('pkg', 'package'), ('port', '22'), ('scheme', 'ssh'), ('template-dir', None), ('url', 'ssh://host:22/~/path/package.git')]
-
-    >>> sort_dict(parse_url("ssh://host:22/~user/path/%(pkg)s.git", "origin", "package", "/doesnot/exist"))
-    [('base', '~user/'), ('dir', 'path/package.git'), ('host', 'host'), ('name', 'origin'), ('pkg', 'package'), ('port', '22'), ('scheme', 'ssh'), ('template-dir', '/doesnot/exist'), ('url', 'ssh://host:22/~user/path/package.git')]
-
-    >>> parse_url("git://host/repo.git", "origin", "package")
-    Traceback (most recent call last):
-        ...
-    GbpError: URL must use ssh protocol.
-    >>> parse_url("ssh://host/path/repo", "origin", "package")
-    Traceback (most recent call last):
-        ...
-    GbpError: URL needs to contain either a repository name or '%(pkg)s'
-    >>> parse_url("ssh://host:asdf/path/%(pkg)s.git", "origin", "package")
-    Traceback (most recent call last):
-        ...
-    GbpError: URL contains invalid port.
-    >>> parse_url("ssh://host/~us er/path/%(pkg)s.git", "origin", "package")
-    Traceback (most recent call last):
-        ...
-    GbpError: URL contains invalid ~username expansion.
     """
-    frags = urlparse.urlparse(remote_url)
+    frags = urllib.parse.urlparse(remote_url)
     if frags.scheme in ['ssh', 'git+ssh', '']:
         scheme = frags.scheme
     else:
         raise GbpError("URL must use ssh protocol.")
 
-    if not '%(pkg)s' in remote_url and not remote_url.endswith(".git"):
+    if '%(pkg)s' not in remote_url and not remote_url.endswith(".git"):
         raise GbpError("URL needs to contain either a repository name or '%(pkg)s'")
 
     if ":" in frags.netloc:
@@ -129,45 +101,50 @@ def parse_url(remote_url, name, pkg, template_dir=None):
         base = ""
         path = frags.path
 
-    remote = { 'pkg' : pkg,
-               'url' : remote_url % { 'pkg': pkg },
-               'dir' : path % { 'pkg': pkg },
-               'base': base,
-               'host': host,
-               'port': port,
-               'name': name,
-               'scheme': scheme,
-               'template-dir': template_dir}
+    remote = {'pkg': pkg,
+              'url': remote_url % {'pkg': pkg},
+              'dir': path % {'pkg': pkg},
+              'base': base,
+              'host': host,
+              'port': port,
+              'name': name,
+              'scheme': scheme,
+              'template-dir': template_dir,
+              'bare': bare}
     return remote
 
 
 def build_remote_script(remote, branch):
     """
     Create the script that will be run on the remote side
-    >>> build_remote_script({'base': 'base', 'dir': 'dir', 'pkg': 'pkg', 'template-dir': None}, 'branch')
-    '\\nset -e\\numask 002\\nif [ -d base"dir" ]; then\\n  echo "Repository at "basedir" already exists - giving up."\\n  exit 1\\nfi\\nmkdir -p base"dir"\\ncd base"dir"\\ngit init --bare --shared\\necho "pkg packaging" > description\\necho "ref: refs/heads/branch" > HEAD\\n'
-    >>> build_remote_script({'base': 'base', 'dir': 'dir', 'pkg': 'pkg', 'template-dir': '/doesnot/exist'}, 'branch')
-    '\\nset -e\\numask 002\\nif [ -d base"dir" ]; then\\n  echo "Repository at "basedir" already exists - giving up."\\n  exit 1\\nfi\\nmkdir -p base"dir"\\ncd base"dir"\\ngit init --bare --shared --template=/doesnot/exist\\necho "pkg packaging" > description\\necho "ref: refs/heads/branch" > HEAD\\n'
     """
     args = remote
     args['branch'] = branch
-    args['git-init-args'] = '--bare --shared'
+    args['git-init-args'] = '--shared'
+    if args['bare']:
+        args['git-init-args'] += ' --bare'
+        args['checkout_cmd'] = ''
+        args['git_dir'] = '.'
+    else:
+        args['checkout_cmd'] = 'git checkout -f'
+        args['git_dir'] = '.git'
     if args['template-dir']:
         args['git-init-args'] += (' --template=%s'
-                                    % args['template-dir'])
-    remote_script_pattern = ['',
-      'set -e',
-      'umask 002',
-      'if [ -d %(base)s"%(dir)s" ]; then',
-      '  echo "Repository at \"%(base)s%(dir)s\" already exists - giving up."',
-      '  exit 1',
-      'fi',
-      'mkdir -p %(base)s"%(dir)s"',
-      'cd %(base)s"%(dir)s"',
-      'git init %(git-init-args)s',
-      'echo "%(pkg)s packaging" > description',
-      'echo "ref: refs/heads/%(branch)s" > HEAD',
-      '' ]
+                                  % args['template-dir'])
+    remote_script_pattern = \
+        ['',
+         'set -e',
+         'umask 002',
+         'if [ -d %(base)s"%(dir)s" ]; then',
+         '  echo "Repository at \"%(base)s%(dir)s\" already exists - giving up."',
+         '  exit 1',
+         'fi',
+         'mkdir -p %(base)s"%(dir)s"',
+         'cd %(base)s"%(dir)s"',
+         'git init %(git-init-args)s',
+         'echo "%(pkg)s packaging" > %(git_dir)s/description',
+         'echo "ref: refs/heads/%(branch)s" > %(git_dir)s/HEAD',
+         '']
     remote_script = '\n'.join(remote_script_pattern) % args
     return remote_script
 
@@ -206,7 +183,7 @@ def read_yn():
         if old_settings:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
-    if ch in ( 'y', 'Y' ):
+    if ch in ('y', 'Y'):
         return True
     else:
         return False
@@ -214,9 +191,9 @@ def read_yn():
 
 def setup_branch_tracking(repo, remote, branches):
     repo.add_remote_repo(name=remote['name'], url=remote['url'], fetch=True)
-    gitTrackRemote = GitCommand('branch', ['--set-upstream'])
+    gitTrackRemote = GitCommand('branch', ['--set-upstream-to'])
     for branch in branches:
-        gitTrackRemote(['%s' % branch, '%s/%s' % (remote['name'], branch)])
+        gitTrackRemote(['%s/%s' % (remote['name'], branch), branch])
 
 
 def push_branches(remote, branches):
@@ -225,30 +202,23 @@ def push_branches(remote, branches):
     gitPush([remote['url'], '--tags'])
 
 
-def parse_args(argv, sections=[]):
-    """
-    Parse the command line arguments and config files.
+def usage_msg():
+    return """%prog [options] - create a remote git repository
+Actions:
+  create         create the repository. This is the default when no action is
+                 given.
+  list           list available configuration templates for remote repositories"""
 
-    @param argv: the command line arguments
-    @type argv: C{list} of C{str}
-    @param sections: additional sections to add to the config file parser
-        besides the command name
-    @type sections: C{list} of C{str}
-    """
 
-    # We simpley handle the template section as an additional config file
-    # section to parse, this makes e.g. --help work as expected:
-    for arg in argv:
-        if arg.startswith('--remote-config='):
-            sections = ['remote-config %s' % arg.split('=',1)[1]]
-            break
-    else:
-        sections = []
+def build_parser(name, sections=[]):
+    try:
+        parser = GbpOptionParserDebian(command=os.path.basename(name), prefix='',
+                                       usage=usage_msg(),
+                                       sections=sections)
+    except (GbpError, configparser.NoSectionError) as err:
+        gbp.log.err(err)
+        return None
 
-    parser = GbpOptionParserDebian(command=os.path.basename(argv[0]), prefix='',
-                                   usage='%prog [options] - '
-                                   'create a remote repository',
-                                   sections=sections)
     branch_group = GbpOptionGroup(parser,
                                   "branch options",
                                   "branch layout and tracking options")
@@ -263,6 +233,8 @@ def parse_args(argv, sections=[]):
                                                 dest="pristine_tar")
     branch_group.add_boolean_config_file_option(option_name="track",
                                                 dest='track')
+    branch_group.add_boolean_config_file_option(option_name="bare",
+                                                dest='bare')
     parser.add_option("-v", "--verbose",
                       action="store_true",
                       dest="verbose",
@@ -281,24 +253,36 @@ def parse_args(argv, sections=[]):
                                   dest="template_dir")
     parser.add_config_file_option(option_name="remote-config",
                                   dest="remote_config")
-
-    (options, args) = parser.parse_args(argv)
-
-    return options, args
+    return parser
 
 
-def main(argv):
+def parse_args(argv):
+    """
+    Parse the command line arguments and config files.
+
+    @param argv: the command line arguments
+    @type argv: C{list} of C{str}
+    """
+    sections = []
+    # We handle the template section as an additional config file
+    # section to parse, this makes e.g. --help work as expected:
+    for arg in argv:
+        if arg.startswith('--remote-config='):
+            sections = ['remote-config %s' % arg.split('=', 1)[1]]
+            break
+
+    parser = build_parser(argv[0], sections)
+    if not parser:
+        return None, None, None
+
+    return list(parser.parse_args(argv)) + [parser.config_file_sections]
+
+
+def do_create(options):
     retval = 0
     changelog = 'debian/changelog'
     cmd = []
 
-    try:
-        options, args = parse_args(argv)
-    except Exception as e:
-        print >>sys.stderr, "%s" % e
-        return 1
-
-    gbp.log.setup(options.color, options.verbose, options.color_scheme)
     try:
         repo = DebianGitRepository(os.path.curdir)
     except GitRepositoryError:
@@ -308,12 +292,12 @@ def main(argv):
     try:
         branches = []
 
-        for branch in [ options.debian_branch, options.upstream_branch ]:
+        for branch in [options.debian_branch, options.upstream_branch]:
             if repo.has_branch(branch):
-                branches += [ branch ]
+                branches += [branch]
 
         if repo.has_pristine_tar_branch() and options.pristine_tar:
-            branches += [ repo.pristine_tar_branch ]
+            branches += [repo.pristine_tar_branch]
 
         try:
             cp = ChangeLog(filename=changelog)
@@ -329,7 +313,8 @@ def main(argv):
         remote = parse_url(options.remote_url,
                            options.name,
                            pkg,
-                           options.template_dir)
+                           options.template_dir,
+                           options.bare)
         if repo.has_remote_repo(options.name):
             raise GbpError("You already have a remote name '%s' defined for this repository." % options.name)
 
@@ -337,35 +322,83 @@ def main(argv):
         if not read_yn():
             raise GbpError("Aborted.")
 
-        remote_script = build_remote_script(remote, branches[0])
+        remote_default = branches[0] if branches else options.debian_branch
+        remote_script = build_remote_script(remote, remote_default)
         if options.verbose:
-            print remote_script
+            print(remote_script)
 
         cmd = build_cmd(remote)
         if options.verbose:
-            print cmd
+            print(cmd)
 
         proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
-        proc.communicate(remote_script)
+        proc.communicate(remote_script.encode())
         if proc.returncode:
             raise GbpError("Error creating remote repository")
 
-        push_branches(remote, branches)
+        if branches:
+            push_branches(remote, branches)
         if options.track:
             setup_branch_tracking(repo, remote, branches)
         else:
             gbp.log.info("You can now add:")
             print_config(remote, branches)
-            gbp.log.info("to your .git/config to 'gbp-pull' and 'git push' in the future.")
-
+            gbp.log.info("to your .git/config to 'gbp pull' and 'git push' in the future.")
+    except KeyboardInterrupt:
+        retval = 1
+        gbp.log.err("Interrupted. Aborting.")
     except CommandExecFailed:
         retval = 1
     except (GbpError, GitRepositoryError) as err:
-        if len(err.__str__()):
+        if str(err):
             gbp.log.err(err)
         retval = 1
-
     return retval
+
+
+def get_config_names(sections):
+    config_names = []
+    for section in sections:
+        if section.startswith("remote-config "):
+            config_names.append(section.split(' ', 1)[1])
+    return config_names
+
+
+def do_list(sections):
+    names = get_config_names(sections)
+    if names:
+        gbp.log.info("Available remote config templates:")
+        for n in names:
+            print("    %s" % n)
+    else:
+        gbp.log.info("No remote config templates found.")
+    return 0
+
+
+def main(argv):
+    retval = 1
+
+    options, args, sections = parse_args(argv)
+    if not options:
+        return ExitCodes.parse_error
+
+    gbp.log.setup(options.color, options.verbose, options.color_scheme)
+
+    if len(args) == 1:
+        args.append('create')  # the default
+    elif len(args) > 2:
+        gbp.log.err("Only one action allowed")
+        return 1
+
+    action = args[1]
+    if action == 'create':
+        retval = do_create(options)
+    elif action == 'list':
+        retval = do_list(sections)
+    else:
+        gbp.log.err("Unknown action '%s'" % action)
+    return retval
+
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))

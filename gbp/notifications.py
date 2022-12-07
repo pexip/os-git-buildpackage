@@ -1,6 +1,6 @@
 # vim: set fileencoding=utf-8 :
 #
-# (C) 2011 Guido Guenther <agx@sigxcpu.org>
+# (C) 2011 Guido Günther <agx@sigxcpu.org>
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation; either version 2 of the License, or
@@ -12,12 +12,13 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#    along with this program; if not, please see
+#    <http://www.gnu.org/licenses/>
 
 import warnings
 
 notify_module = None
+
 
 def enable_notifications():
     global notify_module
@@ -26,18 +27,21 @@ def enable_notifications():
         # Avoid GTK+ cannot open display warning:
         warnings.simplefilter("ignore")
         try:
-            import pynotify
-            notify_module = pynotify
-        except ImportError:
+            import notify2
+            notify_module = notify2
+        except (ImportError, RuntimeError):
             return False
 
-    return notify_module.init("git-buildpackage")
+    try:
+        return notify_module.init("git-buildpackage")
+    except Exception:
+        return False
 
 
 def build_msg(cp, success):
     summary = "Gbp %s" % ["failed", "successful"][success]
     msg = ("Build of %s %s %s" %
-            (cp['Source'], cp['Version'], ["failed", "succeeded"][success]))
+           (cp['Source'], cp['Version'], ["failed", "succeeded"][success]))
 
     return summary, msg
 
@@ -48,12 +52,12 @@ def send_notification(summary, msg):
     try:
         if not n.show():
             return False
-    except:
+    except Exception:
         return False
     return True
 
 
-def notify(cp, success, notify_opt):
+def notify(summary, message, notify_opt):
     """
     Send a notifications
     @return: False on error
@@ -66,6 +70,4 @@ def notify(cp, success, notify_opt):
     if not enable:
         return [True, False][notify_opt.is_on()]
 
-    summary, msg = build_msg(cp, success)
-    return notify_opt.do(send_notification, summary, msg)
-
+    return notify_opt.do(send_notification, summary, message)

@@ -11,17 +11,19 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#    along with this program; if not, please see
+#    <http://www.gnu.org/licenses/>
 """Test L{gbp.pq}"""
 
 from . import context
+from . import testutils
 
 import os
-import testutils
+
 from gbp.deb.source import DebianSource, DebianSourceError
 from gbp.deb.format import DebianSourceFormat
 from gbp.git.vfs import GitVfs
+
 
 class TestDebianSource(testutils.DebianGitTestRepo):
     """Test L{gbp.deb.source}'s """
@@ -34,21 +36,33 @@ class TestDebianSource(testutils.DebianGitTestRepo):
         """Test native package of format 3"""
         source = DebianSource('.')
         os.makedirs('debian/source')
+        with self.assertRaises(DebianSourceError):
+            source.is_native()
 
         dsf = DebianSourceFormat.from_content("3.0", "native")
         self.assertEqual(dsf.type, 'native')
-        self.assertTrue(source.is_native(False))
+        self.assertTrue(source.is_native())
 
         dsf = DebianSourceFormat.from_content("3.0", "quilt")
         self.assertEqual(dsf.type, 'quilt')
-        self.assertFalse(source.is_native(True))
+        self.assertFalse(source.is_native())
 
     def test_is_native_fallback_file(self):
         """Test native package without a debian/source/format file"""
         source = DebianSource('.')
         os.makedirs('debian/')
-        self.assertFalse(source.is_native(True))
-        self.assertTrue(source.is_native(False))
+        with self.assertRaises(DebianSourceError):
+            source.is_native()
+
+        with open('debian/changelog', 'w') as f:
+            f.write("""git-buildpackage (0.2.3) git-buildpackage; urgency=low
+
+  * git doesn't like '~' in tag names so replace this with a dot when tagging
+
+ -- Guido Guenther <agx@sigxcpu.org>  Mon,  2 Oct 2006 18:30:20 +0200
+""")
+        source = DebianSource('.')
+        self.assertTrue(source.is_native())
 
     def _commit_format(self, version, format):
         # Commit a format file to disk
@@ -65,8 +79,65 @@ class TestDebianSource(testutils.DebianGitTestRepo):
         """Test native package of format 3 from git"""
         self._commit_format('3.0', 'native')
         source = DebianSource(GitVfs(self.repo))
-        self.assertTrue(source.is_native(False))
+        self.assertTrue(source.is_native())
 
         self._commit_format('3.0', 'quilt')
         source = DebianSource(GitVfs(self.repo))
-        self.assertFalse(source.is_native(True))
+        self.assertFalse(source.is_native())
+
+    def test_is_releasable(self):
+        os.makedirs('debian/')
+        with open('debian/changelog', 'w') as f:
+            f.write("""git-buildpackage (0.2.3) unstable; urgency=low
+
+  * git doesn't like '~' in tag names so replace this with a dot when tagging
+
+ -- Guido Guenther <agx@sigxcpu.org>  Mon,  2 Oct 2006 18:30:20 +0200
+""")
+        source = DebianSource('.')
+        self.assertEquals(source.changelog.distribution, "unstable")
+        self.assertTrue(source.is_releasable())
+
+    def test_is_not_releasable(self):
+        os.makedirs('debian/')
+        with open('debian/changelog', 'w') as f:
+            f.write("""git-buildpackage (0.2.3) UNRELEASED; urgency=low
+
+  * git doesn't like '~' in tag names so replace this with a dot when tagging
+
+ -- Guido Guenther <agx@sigxcpu.org>  Mon,  2 Oct 2006 18:30:20 +0200
+""")
+        source = DebianSource('.')
+        self.assertEquals(source.changelog.distribution, "UNRELEASED")
+        self.assertFalse(source.is_releasable())
+
+    def test_control(self):
+        os.makedirs('debian/')
+        with open('debian/control', 'w') as f:
+            f.write("Source: foo")
+        source = DebianSource('.')
+        self.assertIsNotNone(source.control)
+        self.assertEquals(source.control.name, "foo")
+
+    def test_cur_dir_not_toplevel(self):
+        """
+        Check if we can parse files if workdir != debian toplevel dir
+        """
+        os.makedirs('debian/')
+        with open('debian/changelog', 'w') as f:
+            f.write("""foo (0.2.3) unstable; urgency=low
+
+  * git doesn't like '~' in tag names so replace this with a dot when tagging
+
+ -- Guido Guenther <agx@sigxcpu.org>  Mon,  2 Oct 2006 18:30:20 +0200
+""")
+        with open('debian/control', 'w') as f:
+            f.write("Source: foo")
+        os.chdir('debian/')
+        source = DebianSource('..')
+        self.assertEquals(source.changelog.name, "foo")
+        self.assertEquals(source.control.name, "foo")
+
+        source = DebianSource(os.path.abspath('..'))
+        self.assertEquals(source.changelog.name, "foo")
+        self.assertEquals(source.control.name, "foo")

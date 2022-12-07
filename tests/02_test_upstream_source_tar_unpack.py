@@ -5,12 +5,11 @@
 from . import context
 
 import os
-import shutil
 import tarfile
-import tempfile
 import unittest
 
 import gbp.pkg
+
 
 class TestUnpack(unittest.TestCase):
     """Make sure we unpack gzip and bzip2 archives correctly"""
@@ -26,10 +25,10 @@ class TestUnpack(unittest.TestCase):
             assert os.path.exists(target), "%s does not exist" % target
 
     def _create_archive(self, comp):
-        filelist = [ 'README', 'setup.py' ]
+        filelist = ['README.md', 'setup.py']
 
         name = "%s_0.1.tar.%s" % (self.archive_prefix, comp)
-        t = tarfile.open(name= name, mode='w:%s' % comp)
+        t = tarfile.open(name=name, mode='w:%s' % comp)
         for f in filelist:
             t.add(os.path.join(self.top, f),
                   os.path.join(self._unpack_dir(comp), f))
@@ -41,39 +40,39 @@ class TestUnpack(unittest.TestCase):
         self.top = context.projectdir
         context.chdir(self.dir)
         self.archives = {}
-        for ext in [ "gz", "bz2" ]:
+        for ext in ["gz", "bz2"]:
             self.archives[ext] = self._create_archive(ext)
 
     def tearDown(self):
         context.teardown()
 
     def test_upstream_source_type(self):
-        for (comp, archive) in self.archives.iteritems():
+        for (comp, archive) in self.archives.items():
             source = gbp.pkg.UpstreamSource(archive[0])
-            assert source.is_orig() == True
-            assert source.is_dir() == False
-            assert source.unpacked == None
+            assert source.is_orig() is True
+            assert source.is_dir() is False
+            assert source.unpacked is None
             source.unpack(".")
-            assert source.is_orig() == True
-            assert source.is_dir() == False
+            assert source.is_orig() is True
+            assert source.is_dir() is False
             assert type(source.unpacked) == str
 
     def test_upstream_source_unpack(self):
-        for (comp, archive) in self.archives.iteritems():
+        for (comp, archive) in self.archives.items():
             source = gbp.pkg.UpstreamSource(archive[0])
             source.unpack(".")
             self._check_files(archive[1], comp)
 
     def test_upstream_source_unpack_no_filter(self):
-        for (comp, archive) in self.archives.iteritems():
+        for (comp, archive) in self.archives.items():
             source = gbp.pkg.UpstreamSource(archive[0])
             source.unpack(".", [])
             self._check_files(archive[1], comp)
 
     def test_upstream_source_unpack_filtered(self):
-        exclude = "README"
+        exclude = "README.md"
 
-        for (comp, archive) in self.archives.iteritems():
+        for (comp, archive) in self.archives.items():
             source = gbp.pkg.UpstreamSource(archive[0])
             source.unpack(".", [exclude])
             archive[1].remove(exclude)

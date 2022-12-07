@@ -1,6 +1,6 @@
 # vim: set fileencoding=utf-8 :
 #
-# (C) 2006,2007,2008,2011,2013 Guido Guenther <agx@sigxcpu.org>
+# (C) 2006,2007,2008,2011,2013,2017 Guido Günther <agx@sigxcpu.org>
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation; either version 2 of the License, or
@@ -12,21 +12,24 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#    along with this program; if not, please see
+#    <http://www.gnu.org/licenses/>
 """A Git repository"""
 
 import subprocess
 import os.path
 import re
+import sys
 from collections import defaultdict
 
 import gbp.log as log
 from gbp.errors import GbpError
+from gbp.format import format_b
 from gbp.git.modifier import GitModifier
 from gbp.git.commit import GitCommit
 from gbp.git.errors import GitError
 from gbp.git.args import GitArgs
+from gbp.paths import to_bin
 
 
 class GitRepositoryError(GitError):
@@ -39,7 +42,7 @@ class GitRemote(object):
     def __init__(self, name, fetch_url, push_urls):
         self._name = name
         self._fetch_url = fetch_url
-        if isinstance(push_urls, basestring):
+        if isinstance(push_urls, str):
             self._push_urls = [push_urls]
         else:
             self._push_urls = [url for url in push_urls]
@@ -83,22 +86,49 @@ class GitRepository(object):
         if ret:
             raise GitRepositoryError(
                 "Failed to get repository state at '%s'" % self.path)
-        self._bare = False if out.strip() != 'true' else True
-        self._git_dir = '' if self._bare else '.git'
+        self._bare = False if out.decode().strip() != 'true' else True
 
-    def __init__(self, path):
-        self._path = os.path.abspath(path)
-        self._bare = False
+    def _get_git_dir(self):
+        out, dummy, ret = self._git_inout('rev-parse', ['--git-dir'],
+                                          capture_stderr=True)
+        if ret:
+            raise GitRepositoryError(
+                "Failed to determine repos git-dir at '%s'" % self.path)
+        git_dir = out.strip().decode(sys.getfilesystemencoding())
+        if os.path.isabs(git_dir):
+            self._git_dir = git_dir
+        else:
+            self._git_dir = os.path.abspath(os.path.join(self.path, git_dir))
+
+    def _check_repo(self, path, toplevel):
         try:
             out, dummy, ret = self._git_inout('rev-parse', ['--show-cdup'],
+                                              cwd=path,
                                               capture_stderr=True)
-            if ret or out.strip():
-                raise GitRepositoryError("No Git repository at '%s': '%s'" % (self.path, out))
+            cdup = out.strip().decode(sys.getfilesystemencoding())
+            if ret:
+                raise GitRepositoryError("No Git repository at '%s': '%s'" % (path, cdup))
+            if toplevel and cdup:
+                raise GitRepositoryError("Not the toplevel of a Git repository at '%s': '%s'" % (path, cdup))
+            ret = os.path.abspath(os.path.join(path, cdup or '.'))
         except GitRepositoryError:
-            raise # We already have a useful error message
-        except:
-            raise GitRepositoryError("No Git repository at '%s'" % self.path)
+            raise  # We already have a useful error message
+        except Exception:
+            raise GitRepositoryError("No Git repository at '%s'" % path)
+        return ret
+
+    def __init__(self, path, toplevel=True):
+        """
+        @param path: path to git repo (or subdir)
+        @type path: C{str}
+        @param toplevel: whether path points to the toplevel dir of
+            git repository
+        @type toplevel: C{bool}
+        """
+        self._bare = False
+        self._path = self._check_repo(path, toplevel)
         self._check_bare()
+        self._get_git_dir()
 
     @staticmethod
     def __build_env(extra_env):
@@ -119,10 +149,10 @@ class GitRepository(object):
         @type args: C{list}
         @param extra_env: extra environment variables to pass
         @type extra_env: C{dict}
-        @param cwd: directory to swith to when running the command, defaults to I{self.path}
+        @param cwd: directory to switch to when running the command, defaults to I{self.path}
         @type cwd: C{str}
         @return: stdout, return code
-        @rtype: C{tuple} of C{list} of C{str} and C{int}
+        @rtype: C{tuple} of C{list} of C{bytestr} and C{int}
 
         @deprecated: use L{gbp.git.repository.GitRepository._git_inout} instead.
         """
@@ -135,13 +165,13 @@ class GitRepository(object):
         cmd = ['git', command] + args
         log.debug(cmd)
         popen = subprocess.Popen(cmd, stdout=subprocess.PIPE, env=env, cwd=cwd)
-        while popen.poll() == None:
+        while popen.poll() is None:
             output += popen.stdout.readlines()
         output += popen.stdout.readlines()
         return output, popen.returncode
 
     def _git_inout(self, command, args, input=None, extra_env=None, cwd=None,
-                   capture_stderr=False):
+                   capture_stderr=False, config_args=None):
         """
         Run a git command with input and return output
 
@@ -153,24 +183,31 @@ class GitRepository(object):
         @type args: C{list}
         @param extra_env: extra environment variables to pass
         @type extra_env: C{dict}
+        @param cwd: directory to switch to when running the command, defaults to I{self.path}
+        @type cwd: C{str}
         @param capture_stderr: whether to capture stderr
         @type capture_stderr: C{bool}
         @return: stdout, stderr, return code
-        @rtype: C{tuple} of C{str}, C{str}, C{int}
+        @rtype: C{tuple} of C{bytestr}, C{bytestr}, C{int}
         """
         if not cwd:
             cwd = self.path
-        return self.__git_inout(command, args, input, extra_env, cwd, capture_stderr)
+        return self.git_inout(command, args, input, extra_env, cwd, capture_stderr, config_args)
 
     @classmethod
-    def __git_inout(cls, command, args, input, extra_env, cwd, capture_stderr):
+    def git_inout(cls, command, args, input, extra_env, cwd, capture_stderr, config_args=None):
         """
         As _git_inout but can be used without an instance
         """
-        cmd = ['git', command] + args
+        config_opts = []
+        config_args = config_args or []
+        for arg in config_args:
+            config_opts.extend(['-c', arg])
+
+        cmd = ['git'] + config_opts + [command] + args
         env = cls.__build_env(extra_env)
         stderr_arg = subprocess.PIPE if capture_stderr else None
-        stdin_arg = subprocess.PIPE if input else None
+        stdin_arg = subprocess.PIPE if input is not None else None
 
         log.debug(cmd)
         popen = subprocess.Popen(cmd,
@@ -204,8 +241,8 @@ class GitRepository(object):
         except Exception as excobj:
             raise GitRepositoryError("Error running git %s: %s" % (command, excobj))
         if ret:
-            raise GitRepositoryError("Error running git %s: %s" % (command, stderr))
-
+            detail = stderr or stdout
+            raise GitRepositoryError("Error running git %s: %s" % (command, detail.decode().strip()))
 
     def _cmd_has_feature(self, command, feature):
         """
@@ -220,19 +257,19 @@ class GitRepository(object):
         """
         args = GitArgs(command, '-m')
         help, stderr, ret = self._git_inout('help',
-                                           args.args,
-                                           extra_env={'LC_ALL': 'C'},
-                                           capture_stderr=True)
+                                            args.args,
+                                            extra_env={'LC_ALL': 'C'},
+                                            capture_stderr=True)
         if ret:
             raise GitRepositoryError("Invalid git command '%s': %s"
-                                     % (command, stderr[:-1]))
+                                     % (command, stderr.decode().strip()))
 
         # Parse git command man page
         section_re = re.compile(r'^(?P<section>[A-Z].*)')
         option_re = re.compile(r'--?(?P<name>[a-zA-Z\-]+).*')
         optopt_re = re.compile(r'--\[(?P<prefix>[a-zA-Z\-]+)\]-?')
         man_section = None
-        for line in help.splitlines():
+        for line in help.decode().splitlines():
             if man_section == "OPTIONS" and line.startswith('       -'):
                 opts = line.split(',')
                 for opt in opts:
@@ -263,7 +300,7 @@ class GitRepository(object):
 
     @property
     def bare(self):
-        """Wheter this is a bare repository"""
+        """Whether this is a bare repository"""
         return self._bare
 
     @property
@@ -281,7 +318,7 @@ class GitRepository(object):
 
     @property
     def head(self):
-        """return the SHA1 of the current HEAD"""
+        """SHA1 of the current HEAD"""
         return self.rev_parse('HEAD')
 
 #{ Branches and Merging
@@ -295,16 +332,18 @@ class GitRepository(object):
         args = GitArgs("-m", branch, newbranch)
         self._git_command("branch", args.args)
 
-    def create_branch(self, branch, rev=None):
+    def create_branch(self, branch, rev=None, force=False):
         """
         Create a new branch
 
         @param branch: the branch's name
         @param rev: where to start the branch from
+        @param force: reset branch HEAD to start point, if it already exists
 
-        If rev is None the branch starts form the current HEAD.
+        If rev is None the branch starts from the current HEAD.
         """
         args = GitArgs(branch)
+        args.add_true(force, '--force')
         args.add_true(rev, rev)
         self._git_command("branch", args.args)
 
@@ -317,6 +356,9 @@ class GitRepository(object):
         @param remote: delete a remote branch
         @param remote: C{bool}
         """
+        if not self.has_branch(branch):
+            return
+
         args = GitArgs('-D')
         args.add_true(remote, '-r')
         args.add(branch)
@@ -335,22 +377,21 @@ class GitRepository(object):
         @raises GitRepositoryError: if HEAD is not a symbolic ref
           (e.g. when in detached HEAD state)
         """
-        out, dummy, ret = self._git_inout('symbolic-ref', [ 'HEAD' ],
-                                           capture_stderr=True)
+        out, _, ret = self._git_inout('symbolic-ref', ['HEAD'],
+                                      capture_stderr=True)
         if ret:
             # We don't append stderr since
             # "fatal: ref HEAD is not a symbolic ref" confuses people
             raise GitRepositoryError("Currently not on a branch")
-        ref = out.split('\n')[0]
+        ref = out.decode().split('\n')[0]
 
         # Check if ref really exists
         try:
-            self._git_command('show-ref', [ ref ])
-            branch = ref[11:] # strip /refs/heads
+            self._git_command('show-ref', [ref])
+            branch = ref[11:]  # strip /refs/heads
         except GitRepositoryError:
             branch = None  # empty repo
         return branch
-
 
     def has_branch(self, branch, remote=False):
         """
@@ -362,12 +403,12 @@ class GitRepository(object):
         @return: C{True} if the repository has this branch, C{False} otherwise
         @rtype: C{bool}
         """
-        if remote:
-            ref = 'refs/remotes/%s' % branch
-        else:
-            ref = 'refs/heads/%s' % branch
+        args = GitArgs('--verify')
+
+        branch_pattern = 'refs/remotes/%s' if remote else 'refs/heads/%s'
+        args.add(branch_pattern % branch)
         try:
-            self._git_command('show-ref', [ ref ])
+            self._git_command('show-ref', args.args)
         except GitRepositoryError:
             return False
         return True
@@ -384,9 +425,9 @@ class GitRepository(object):
 
         if self.bare:
             self._git_command("symbolic-ref",
-                              [ 'HEAD', 'refs/heads/%s' % branch ])
+                              ['HEAD', 'refs/heads/%s' % branch])
         else:
-            self._git_command("checkout", [ branch ])
+            self._git_command("checkout", [branch])
 
     def get_merge_branch(self, branch):
         """
@@ -400,7 +441,7 @@ class GitRepository(object):
             merge = self.get_config("branch.%s.merge" % branch)
         except KeyError:
             return None
-        remote += merge.replace("refs/heads","", 1)
+        remote += merge.replace("refs/heads", "", 1)
         return remote
 
     def get_merge_base(self, commit1, commit2):
@@ -417,11 +458,14 @@ class GitRepository(object):
         args = GitArgs()
         args.add(commit1)
         args.add(commit2)
-        sha1, stderr, ret = self._git_inout('merge-base', args.args, capture_stderr=True)
+        sha1, stderr, ret = self._git_inout('merge-base',
+                                            args.args,
+                                            extra_env={'LC_ALL': 'C'},
+                                            capture_stderr=True)
         if not ret:
-            return self.strip_sha1(sha1)
+            return self.strip_sha1(sha1.decode())
         else:
-            raise GitRepositoryError("Failed to get common ancestor: %s" % stderr.strip())
+            raise GitRepositoryError("Failed to get common ancestor: %s" % stderr.decode().strip())
 
     def merge(self, commit, verbose=False, edit=False):
         """
@@ -431,7 +475,7 @@ class GitRepository(object):
         @type commit: C{str}
         @param verbose: whether to print a summary after the merge
         @type verbose: C{bool}
-        @param edit: wheter to invoke an editor to edit the merge message
+        @param edit: whether to invoke an editor to edit the merge message
         @type edit: C{bool}
         """
         args = GitArgs()
@@ -444,6 +488,15 @@ class GitRepository(object):
         args.add(commit)
         self._git_command("merge", args.args)
 
+    def abort_merge(self):
+        """
+        Abort a merge
+        """
+        self._git_command("merge", ["--abort"])
+
+    def is_in_merge(self):
+        return os.path.exists(os.path.join(self.git_dir, 'MERGE_HEAD'))
+
     def is_fast_forward(self, from_branch, to_branch):
         """
         Check if an update I{from from_branch} to I{to_branch} would be a fast
@@ -454,14 +507,15 @@ class GitRepository(object):
         """
         has_local = False       # local repo has new commits
         has_remote = False      # remote repo has new commits
-        out = self._git_getoutput('rev-list', ["--left-right",
+        out = self._git_getoutput('rev-list',
+                                  ["--left-right",
                                    "%s...%s" % (from_branch, to_branch),
                                    "--"])[0]
 
-        if not out: # both branches have the same commits
+        if not out:  # both branches have the same commits
             return True, True
 
-        for line in out:
+        for line in (li.decode() for li in out):
             if line.startswith("<"):
                 has_local = True
             elif line.startswith(">"):
@@ -483,10 +537,10 @@ class GitRepository(object):
         @return: local or remote branches
         @rtype: C{list}
         """
-        args = [ '--format=%(refname:short)' ]
-        args += [ 'refs/remotes/' ] if remote else [ 'refs/heads/' ]
+        args = ['--format=%(refname:short)']
+        args += ['refs/remotes/'] if remote else ['refs/heads/']
         out = self._git_getoutput('for-each-ref', args)[0]
-        return [ ref.strip() for ref in out ]
+        return [ref.decode().strip() for ref in out]
 
     def get_local_branches(self):
         """
@@ -496,7 +550,6 @@ class GitRepository(object):
         @rtype: C{list}
         """
         return self._get_branches(remote=False)
-
 
     def get_remote_branches(self):
         """
@@ -521,12 +574,11 @@ class GitRepository(object):
         @param msg: the reason for the update
         @type msg: C{str}
         """
-        args = [ ref, new ]
-        if old:
-            args += [ old ]
-        if msg:
-            args = [ '-m', msg ] + args
-        self._git_command("update-ref", args)
+        args = GitArgs()
+        args.add_true(msg, '-m', msg)
+        args.add(ref, new)
+        args.add_true(old, old)
+        self._git_command("update-ref", args.args)
 
     def branch_contains(self, branch, commit, remote=False):
         """
@@ -544,8 +596,8 @@ class GitRepository(object):
         args.add('--contains')
         args.add(commit)
 
-        out, ret =  self._git_getoutput('branch', args.args)
-        for line in out:
+        out, ret = self._git_getoutput('branch', args.args)
+        for line in [li.decode() for li in out]:
             # remove prefix '*' for current branch before comparing
             line = line.replace('*', '')
             if line.strip() == branch:
@@ -558,7 +610,7 @@ class GitRepository(object):
 
         @param local_branch: name of the local branch
         @type local_branch: C{str}
-        @param upstream: remote/branch, for example origin/master
+        @param upstream: Remote branch in the form remote/branch, e.g. origin/master
         @type upstream: C{str}
         """
 
@@ -574,6 +626,7 @@ class GitRepository(object):
 
         dummy, err, ret = self._git_inout('branch',
                                           args,
+                                          extra_env={'LC_ALL': 'C'},
                                           capture_stderr=True)
         if ret:
             raise GitRepositoryError(
@@ -598,7 +651,7 @@ class GitRepository(object):
 
         out = self._git_getoutput('for-each-ref', args.args)[0]
 
-        return out[0].strip()
+        return out[0].decode().strip()
 
 #{ Tags
 
@@ -619,12 +672,12 @@ class GitRepository(object):
         @type keyid: C{str}
         """
         args = []
-        args += [ '-m', msg ] if msg else []
+        args += ['-m', msg] if msg else []
         if sign:
-            args += [ '-s' ]
-            args += [ '-u', keyid ] if keyid else []
-        args += [ name ]
-        args += [ commit ] if commit else []
+            args += ['-s']
+            args += ['-u', keyid] if keyid else []
+        args += [name]
+        args += [commit] if commit else []
         self._git_command("tag", args)
 
     def delete_tag(self, tag):
@@ -635,10 +688,10 @@ class GitRepository(object):
         @type tag: C{str}
         """
         if self.has_tag(tag):
-            self._git_command("tag", [ "-d", tag ])
+            self._git_command("tag", ["-d", tag])
 
     def move_tag(self, old, new):
-        self._git_command("tag", [ new, old ])
+        self._git_command("tag", [new, old])
         self.delete_tag(old)
 
     def has_tag(self, tag):
@@ -650,8 +703,8 @@ class GitRepository(object):
         @return: C{True} if the repository has that tag, C{False} otherwise
         @rtype: C{bool}
         """
-        out, ret = self._git_getoutput('tag', [ '-l', tag ])
-        return [ False, True ][len(out)]
+        out, ret = self._git_getoutput('tag', ['-l', tag])
+        return [False, True][len(out)]
 
     def describe(self, commitish, pattern=None, longfmt=False, always=False,
                  abbrev=None, tags=False, exact_match=False):
@@ -677,7 +730,7 @@ class GitRepository(object):
         @rtype: C{str}
         """
         args = GitArgs()
-        args.add_true(pattern, ['--match' , pattern])
+        args.add_true(pattern, ['--match', pattern])
         args.add_true(longfmt, '--long')
         # 'long' and 'abbrev=0' are incompatible, behave similar to
         # 'always' and 'abbrev=0'
@@ -691,11 +744,12 @@ class GitRepository(object):
         args.add(commitish)
 
         tag, err, ret = self._git_inout('describe', args.args,
+                                        extra_env={'LC_ALL': 'C'},
                                         capture_stderr=True)
         if ret:
-            raise GitRepositoryError("Can't describe %s. Git error: %s" % \
-                                         (commitish, err.strip()))
-        return tag.strip()
+            raise GitRepositoryError("Can't describe %s. Git error: %s" %
+                                     (commitish, err.decode().strip()))
+        return tag.decode().strip()
 
     def find_tag(self, commit, pattern=None):
         """
@@ -710,6 +764,21 @@ class GitRepository(object):
         """
         return self.describe(commit, pattern, abbrev=0)
 
+    def find_branch_tag(self, commit, branch, pattern=None):
+        """
+        Find the closest tag on a certain branch to a given commit
+
+        @param commit: the commit to describe
+        @type commit: C{str}
+        @type branch: C{str}
+        @param pattern: only look for tags matching I{pattern}
+        @type pattern: C{str}
+        @return: the found tag
+        @rtype: C{str}
+        """
+        base_commit = self.get_merge_base(commit, branch)
+        return self.describe(base_commit, pattern, abbrev=0)
+
     def get_tags(self, pattern=None):
         """
         List tags
@@ -719,8 +788,8 @@ class GitRepository(object):
         @return: tags
         @rtype: C{list} of C{str}
         """
-        args = [ '-l', pattern ] if pattern else []
-        return [ line.strip() for line in self._git_getoutput('tag', args)[0] ]
+        args = ['-l', pattern] if pattern else []
+        return [line.decode().strip() for line in self._git_getoutput('tag', args)[0]]
 
     def verify_tag(self, tag):
         """
@@ -753,33 +822,39 @@ class GitRepository(object):
 
         if self.bare:
             ref = "refs/heads/%s" % self.get_branch()
-            self._git_command("update-ref", [ ref, commit ])
+            self._git_command("update-ref", [ref, commit])
         else:
-            args = ['--quiet']
-            if hard:
-                args += [ '--hard' ]
-            args += [ commit, '--' ]
-            self._git_command("reset", args)
+            args = GitArgs('--quiet')
+            args.add_true(hard, '--hard')
+            args.add(commit, '--')
+            self._git_command("reset", args.args)
 
-    def _status(self, porcelain, ignore_untracked):
+    def _status(self, porcelain, ignore_untracked, paths):
         args = GitArgs()
         args.add_true(ignore_untracked, '-uno')
         args.add_true(porcelain, '--porcelain')
 
+        if paths is None:
+            paths = []
+        elif isinstance(paths, str):
+            paths = [paths]
+
         out, ret = self._git_getoutput('status',
-                                       args.args,
+                                       args.args + paths,
                                        extra_env={'LC_ALL': 'C'})
         if ret:
             raise GitRepositoryError("Can't get repository status")
         return out
 
-    def is_clean(self, ignore_untracked=False):
+    def is_clean(self, ignore_untracked=False, paths=None):
         """
         Does the repository contain any uncommitted modifications?
 
         @param ignore_untracked: whether to ignore untracked files when
             checking the repository status
         @type ignore_untracked: C{bool}
+        @param paths: only check changes on paths
+        @type paths: C{list} of C{stings}
         @return: C{True} if the repository is clean, C{False} otherwise
             and Git's status message
         @rtype: C{tuple}
@@ -788,12 +863,14 @@ class GitRepository(object):
             return (True, '')
 
         out = self._status(porcelain=True,
-                           ignore_untracked=ignore_untracked)
+                           ignore_untracked=ignore_untracked,
+                           paths=paths)
         if out:
             # Get a more helpful error message.
             out = self._status(porcelain=False,
-                                ignore_untracked=ignore_untracked)
-            return (False, "".join(out))
+                               ignore_untracked=ignore_untracked,
+                               paths=paths)
+            return (False, "".join([e.decode() for e in out]))
         else:
             return (True, '')
 
@@ -818,6 +895,39 @@ class GitRepository(object):
         if ret:
             raise GitRepositoryError("Can't execute repository clean: %s" % err)
 
+    def status(self, pathlist=None):
+        """
+        Check status of repository.
+
+        @param pathlist: List of paths to check status for
+        @type pathlist: C{list}
+        @return C{dict} of C{lists} of paths, where key is a git status flag.
+        @rtype C{dict}
+        """
+        options = GitArgs('--porcelain', '-z')
+        if pathlist:
+            for path in pathlist:
+                options.add(path)
+
+        out, err, ret = self._git_inout('status', options.args,
+                                        extra_env={'LC_ALL': 'C'})
+        if ret:
+            raise GitRepositoryError("Can't get repository status: %s" % err)
+
+        elements = out.split(b'\x00')
+        result = defaultdict(list)
+
+        while elements[0] != b'':
+            element = elements.pop(0)
+            status = element[:2].decode()
+            filepath = element[3:]
+            # Expect to have two filenames for renames and copies
+            if status[0] in ['R', 'C']:
+                filepath = elements.pop(0) + b'\x00' + filepath
+            result[status].append(filepath)
+
+        return result
+
     def is_empty(self):
         """
         Is the repository empty?
@@ -827,7 +937,7 @@ class GitRepository(object):
         @rtype: C{bool}
         """
         # an empty repo has no branches:
-        return False if self.branch else True
+        return len(self.get_local_branches()) == 0
 
     def rev_parse(self, name, short=0):
         """
@@ -846,7 +956,7 @@ class GitRepository(object):
         sha, ret = self._git_getoutput('rev-parse', args.args)
         if ret:
             raise GitRepositoryError("revision '%s' not found" % name)
-        return self.strip_sha1(sha[0], short)
+        return self.strip_sha1(sha[0].decode(), short)
 
     @staticmethod
     def strip_sha1(sha1, length=0):
@@ -859,7 +969,7 @@ class GitRepository(object):
         >>> GitRepository.strip_sha1('58ef37d', 10)
         Traceback (most recent call last):
         ...
-        GitRepositoryError: '58ef37d' is not a valid sha1 of length 10
+        gbp.git.repository.GitRepositoryError: '58ef37d' is not a valid sha1 of length 10
         >>> GitRepository.strip_sha1('58ef37d', 7)
         '58ef37d'
         >>> GitRepository.strip_sha1('123456789', 7)
@@ -867,16 +977,16 @@ class GitRepository(object):
         >>> GitRepository.strip_sha1('foobar')
         Traceback (most recent call last):
         ...
-        GitRepositoryError: 'foobar' is not a valid sha1
+        gbp.git.repository.GitRepositoryError: 'foobar' is not a valid sha1
         """
         maxlen = 40
         s = sha1.strip()
 
-        l = length or maxlen
+        sl = length or maxlen
 
-        if len(s) < l or len(s) > maxlen:
+        if len(s) < sl or len(s) > maxlen:
             raise GitRepositoryError("'%s' is not a valid sha1%s" %
-                                     (s, " of length %d" % l if length else ""))
+                                     (s, " of length %d" % sl if length else ""))
         return s
 
 #{ Trees
@@ -898,9 +1008,9 @@ class GitRepository(object):
         @return: C{True} if the repository has that tree, C{False} otherwise
         @rtype: C{bool}
         """
-        _out, _err, ret =  self._git_inout('ls-tree', [treeish],
-                                           capture_stderr=True)
-        return [ True, False ][ret != 0]
+        _out, _err, ret = self._git_inout('ls-tree', [treeish],
+                                          capture_stderr=True)
+        return [True, False][ret != 0]
 
     def write_tree(self, index_file=None):
         """
@@ -912,7 +1022,7 @@ class GitRepository(object):
         @rtype: C{str}
         """
         if index_file:
-            extra_env = {'GIT_INDEX_FILE': index_file }
+            extra_env = {'GIT_INDEX_FILE': index_file}
         else:
             extra_env = None
 
@@ -920,28 +1030,30 @@ class GitRepository(object):
                                             extra_env=extra_env,
                                             capture_stderr=True)
         if ret:
-            raise GitRepositoryError("Can't write out current index: %s" % stderr[:-1])
-        return tree.strip()
+            raise GitRepositoryError("Can't write out current index: %s" % stderr.decode().strip())
+        return tree.decode().strip()
 
     def make_tree(self, contents):
         """
-        Create a tree based on contents. I{contents} has the same format than
-        the I{GitRepository.list_tree} output.
+        Create a tree based on contents.
+
+        @param contents: same format as I{GitRepository.list_tree} output.
+        @type contents: C{list} of C{str}
         """
-        out=''
+        objs = b''
         args = GitArgs('-z')
 
-        for obj in contents:
-             mode, type, sha1, name = obj
-             out += '%s %s %s\t%s\0' % (mode, type, sha1, name)
+        for mode, type_, sha1, name in contents:
+            name = to_bin(name)
+            objs += format_b(b'%s %s %s\t%s\0', mode.encode(), type_.encode(), sha1.encode(), name)
 
-        sha1, err, ret =  self._git_inout('mktree',
-                                          args.args,
-                                          out,
-                                          capture_stderr=True)
+        sha1, err, ret = self._git_inout('mktree',
+                                         args.args,
+                                         objs,
+                                         capture_stderr=True)
         if ret:
             raise GitRepositoryError("Failed to mktree: '%s'" % err)
-        return self.strip_sha1(sha1)
+        return self.strip_sha1(sha1.decode())
 
     def get_obj_type(self, obj):
         """
@@ -955,12 +1067,12 @@ class GitRepository(object):
         out, ret = self._git_getoutput('cat-file', args=['-t', obj])
         if ret:
             raise GitRepositoryError("Not a Git repository object: '%s'" % obj)
-        return out[0].strip()
+        return out[0].decode().strip()
 
     def list_tree(self, treeish, recurse=False, paths=None):
         """
         Get a trees content. It returns a list of objects that match the
-        'ls-tree' output: [ mode, type, sha1, path ].
+        'ls-tree' output: [mode, type, sha1, path].
 
         @param treeish: the treeish object to list
         @type treeish: C{str}
@@ -975,14 +1087,18 @@ class GitRepository(object):
         args.add("--")
         args.add_cond(paths, paths)
 
-        out, err, ret =  self._git_inout('ls-tree', args.args, capture_stderr=True)
+        out, err, ret = self._git_inout('ls-tree', args.args, capture_stderr=True)
         if ret:
-            raise GitRepositoryError("Failed to ls-tree '%s': '%s'" % (treeish, err))
+            raise GitRepositoryError("Failed to ls-tree '%s': '%s'" % (treeish, err.decode().strip()))
 
         tree = []
-        for line in out.split('\0'):
+        for line in out.split(b'\0'):
             if line:
-                tree.append(line.split(None, 3))
+                parts = line.split(None, 3)
+                # decode everything but the file name
+                for i in range(len(parts) - 1):
+                    parts[i] = parts[i].decode()
+                tree.append(parts)
         return tree
 
 #}
@@ -995,9 +1111,33 @@ class GitRepository(object):
         @return: fetched config value
         @rtype: C{str}
         """
-        value, ret = self._git_getoutput('config', [ name ])
-        if ret: raise KeyError
-        return value[0][:-1] # first line with \n ending removed
+        value, ret = self._git_getoutput('config', [name])
+        if ret:
+            raise KeyError("'%s' not found in git config")
+        return value[0].decode()[:-1]  # first line with \n ending removed
+
+    def set_config(self, name, value):
+        """
+        Set a git config value in this repository
+        """
+        args = GitArgs(name, value)
+        self._git_command("config", args.args)
+
+    def set_user_name(self, name):
+        """
+        Sets the full name to use for git commits.
+
+        @param name: full name to use
+        """
+        self.set_config('user.name', name)
+
+    def set_user_email(self, email):
+        """
+        Sets the email address to use for git commits.
+
+        @param email: email address to use
+        """
+        self.set_config('user.email', email)
 
     def get_author_info(self):
         """
@@ -1008,11 +1148,11 @@ class GitRepository(object):
         @rtype: L{GitModifier}
         """
         try:
-           name =  self.get_config("user.name")
+            name = self.get_config("user.name")
         except KeyError:
-           name = os.getenv("USER")
+            name = os.getenv("USER")
         try:
-           email =  self.get_config("user.email")
+            email = self.get_config("user.email")
         except KeyError:
             email = os.getenv("EMAIL")
         email = os.getenv("GIT_AUTHOR_EMAIL", email)
@@ -1028,25 +1168,28 @@ class GitRepository(object):
         @return: remote repositories
         @rtype: C{dict} of C{GitRemote}
         """
-        out, err, ret = self._git_inout('remote', [], capture_stderr=True)
+        out, err, ret = self._git_inout('remote', [],
+                                        extra_env={'LC_ALL': 'C'},
+                                        capture_stderr=True)
         if ret:
-            raise GitRepositoryError('Failed to get list of remotes: %s' % err)
+            raise GitRepositoryError('Failed to get list of remotes: %s' % err.decode().strip())
 
         # Get information about all remotes
         remotes = {}
-        for remote in out.splitlines():
+        for remote in out.decode().splitlines():
             out, err, _ret = self._git_inout('remote', ['show', '-n', remote],
+                                             extra_env={'LC_ALL': 'C'},
                                              capture_stderr=True)
             if ret:
                 raise GitRepositoryError('Failed to get information for remote '
-                                         '%s: %s' % (remote, err))
+                                         '%s: %s' % (remote, err.decode().strip()))
             fetch_url = None
             push_urls = []
-            for line in out.splitlines():
-                match = re.match('\s*Fetch\s+URL:\s*(\S.*)', line)
+            for line in out.decode().splitlines():
+                match = re.match(r'\s*Fetch\s+URL:\s*(\S.*)', line)
                 if match:
                     fetch_url = match.group(1)
-                match = re.match('\s*Push\s+URL:\s*(\S.*)', line)
+                match = re.match(r'\s*Push\s+URL:\s*(\S.*)', line)
                 if match:
                     push_urls.append(match.group(1))
             remotes[remote] = GitRemote(remote, fetch_url, push_urls)
@@ -1063,7 +1206,7 @@ class GitRepository(object):
         @rtype: C{list} of C{str}
         """
         out = self._git_getoutput('remote')[0]
-        return [ remote.strip() for remote in out ]
+        return [remote.decode().strip() for remote in out]
 
     def has_remote_repo(self, name):
         """
@@ -1149,7 +1292,7 @@ class GitRepository(object):
         self._git_command("pull", args.args)
 
     def push(self, repo=None, src=None, dst=None, ff_only=True, force=False,
-             tags=False):
+             tags=False, dry_run=False):
         """
         Push changes to the remote repo
 
@@ -1166,14 +1309,17 @@ class GitRepository(object):
         @type force: C{bool}
         @param tags: push all refs under refs/tags, in addition to other refs
         @type tags: C{bool}
+        @param dry_run: dry run
+        @type dry_run: C{bool}
         """
         args = GitArgs()
         args.add_cond(repo, repo)
         args.add_true(force, "-f")
         args.add_true(tags, "--tags")
+        args.add_true(dry_run, "--dry-run")
 
         # Allow for src == '' to delete dst on the remote
-        if src != None:
+        if src is not None:
             refspec = src
             if dst:
                 refspec += ':%s' % dst
@@ -1183,7 +1329,7 @@ class GitRepository(object):
 
         self._git_command("push", args.args)
 
-    def push_tag(self, repo, tag):
+    def push_tag(self, repo, tag, dry_run=False):
         """
         Push a tag to the remote repo
 
@@ -1191,8 +1337,11 @@ class GitRepository(object):
         @type repo: C{str}
         @param tag: the name of the tag
         @type tag: C{str}
+        @param dry_run: dry run
+        @type dry_run: C{bool}
         """
         args = GitArgs(repo, 'tag', tag)
+        args.add_true(dry_run, "--dry-run")
         self._git_command("push", args.args)
 
 #{ Files
@@ -1210,13 +1359,13 @@ class GitRepository(object):
         """
         extra_env = {}
 
-        if isinstance(paths, basestring):
-            paths = [ paths ]
+        if isinstance(paths, str):
+            paths = [paths]
 
-        args = [ '-f' ] if force else []
+        args = ['-f'] if force else []
 
         if index_file:
-            extra_env['GIT_INDEX_FILE'] =  index_file
+            extra_env['GIT_INDEX_FILE'] = index_file
 
         if work_tree:
             extra_env['GIT_WORK_TREE'] = work_tree
@@ -1232,10 +1381,10 @@ class GitRepository(object):
         @param verbose: be verbose
         @type verbose: C{bool}
         """
-        if isinstance(paths, basestring):
-            paths = [ paths ]
+        if isinstance(paths, str):
+            paths = [paths]
 
-        args =  [] if verbose else ['--quiet']
+        args = [] if verbose else ['--quiet']
         self._git_command("rm", args + paths)
 
     def list_files(self, types=['cached']):
@@ -1244,33 +1393,32 @@ class GitRepository(object):
 
         @param types: list of types to show
         @type types: C{list}
-        @return: list of files
+        @return: list of files as byte string
         @rtype: C{list} of C{str}
         """
-        all_types = [ 'cached', 'deleted', 'others', 'ignored',  'stage'
-                      'unmerged', 'killed', 'modified' ]
-        args = [ '-z' ]
+        all_types = ['cached', 'deleted', 'others', 'ignored', 'stage'
+                     'unmerged', 'killed', 'modified']
+        args = ['-z']
 
         for t in types:
             if t in all_types:
-                args += [ '--%s' % t ]
+                args += ['--%s' % t]
             else:
                 raise GitRepositoryError("Unknown type '%s'" % t)
         out, ret = self._git_getoutput('ls-files', args)
         if ret:
             raise GitRepositoryError("Error listing files: '%d'" % ret)
         if out:
-            return [ file for file in out[0].split('\0') if file ]
+            return [file for file in out[0].split(b'\0') if file]
         else:
             return []
-
 
     def write_file(self, filename, filters=True):
         """
         Hash a single file and write it into the object database
 
         @param filename: the filename to the content of the file to hash
-        @type filename: C{str}
+        @type filename: C{bytestr}
         @param filters: whether to run filters
         @type filters: C{bool}
         @return: the hash of the file
@@ -1284,9 +1432,20 @@ class GitRepository(object):
                                             args.args,
                                             capture_stderr=True)
         if not ret:
-            return self.strip_sha1(sha1)
+            return self.strip_sha1(sha1.decode())
         else:
-            raise GbpError("Failed to hash %s: %s" % (filename, stderr))
+            raise GbpError("Failed to hash %s: %s" % (filename, stderr.decode().strip()))
+
+    def rename_file(self, old, new):
+        """
+        Rename file, directory, or symlink
+        """
+        args = GitArgs(old, new)
+        _, stderr, ret = self._git_inout('mv',
+                                         args.args,
+                                         capture_stderr=True)
+        if ret:
+            raise GbpError("Failed to move '%s' to '%s': %s" % (old, new, stderr.decode().rstrip()))
 #}
 
 #{ Comitting
@@ -1307,7 +1466,7 @@ class GitRepository(object):
         @type edit: C{bool}
         """
         args = GitArgs()
-        args.add_true(edit,  '--edit')
+        args.add_true(edit, '--edit')
         self._commit(msg=msg, args=args.args, author_info=author_info)
 
     def commit_all(self, msg, author_info=None, edit=False):
@@ -1319,7 +1478,7 @@ class GitRepository(object):
         @type author_info: L{GitModifier}
         """
         args = GitArgs('-a')
-        args.add_true(edit,  '--edit')
+        args.add_true(edit, '--edit')
         self._commit(msg=msg, args=args.args, author_info=author_info)
 
     def commit_files(self, files, msg, author_info=None):
@@ -1333,8 +1492,8 @@ class GitRepository(object):
         @param author_info: authorship information
         @type author_info: L{GitModifier}
         """
-        if isinstance(files, basestring):
-            files = [ files ]
+        if isinstance(files, str):
+            files = [files]
         self._commit(msg=msg, args=files, author_info=author_info)
 
     @staticmethod
@@ -1411,25 +1570,26 @@ class GitRepository(object):
                     cur = None
                 else:
                     raise
-        else: # emtpy repo
+        else:  # empty repo
             cur = None
             branch = 'master'
 
         # Build list of parents:
         parents = []
         if cur:
-            parents = [ cur ]
+            parents.append(cur)
         if other_parents:
             for parent in other_parents:
                 sha = self.rev_parse(parent)
                 if sha not in parents:
-                    parents += [ sha ]
+                    parents.append(sha)
 
         commit = self.commit_tree(tree=tree, msg=msg, parents=parents,
                                   author=author, committer=committer)
         if not commit:
             raise GitRepositoryError("Failed to commit tree")
-        self.update_ref("refs/heads/%s" % branch, commit, cur)
+        self.update_ref("refs/heads/%s" % branch, commit, cur,
+                        msg="gbp: %s" % msg.split('\n')[0])
         return commit
 
     def commit_tree(self, tree, msg, parents, author={}, committer={}):
@@ -1441,7 +1601,7 @@ class GitRepository(object):
         @param parents: parents of this commit
         @param author: authorship information
         @type author: C{dict} with keys 'name' and 'email' or L{GitModifier}
-        @param committer: comitter information
+        @param committer: committer information
         @type committer: C{dict} with keys 'name' and 'email'
         """
         extra_env = {}
@@ -1452,18 +1612,18 @@ class GitRepository(object):
             if val:
                 extra_env['GIT_COMMITTER_%s' % key.upper()] = val
 
-        args = [ tree ]
+        args = [tree]
         for parent in parents:
-            args += [ '-p' , parent ]
+            args += ['-p', parent]
         sha1, stderr, ret = self._git_inout('commit-tree',
                                             args,
-                                            msg,
+                                            msg.encode(),
                                             extra_env,
                                             capture_stderr=True)
         if not ret:
-            return self.strip_sha1(sha1)
+            return self.strip_sha1(sha1.decode())
         else:
-            raise GbpError("Failed to commit tree: %s" % stderr)
+            raise GbpError("Failed to commit tree: %s" % stderr.decode().strip())
 
 #{ Commit Information
 
@@ -1486,7 +1646,7 @@ class GitRepository(object):
                              merge commit
         @type first_parent: C{bool}
         """
-        args = GitArgs('--pretty=format:%H')
+        args = GitArgs('--pretty=format:%H', '--no-show-signature')
         args.add_true(num, '-%d' % num)
         args.add_true(first_parent, '--first-parent')
         if since:
@@ -1495,26 +1655,30 @@ class GitRepository(object):
             args.add(until)
         args.add_cond(options, options)
         args.add("--")
-        if isinstance(paths, basestring):
-            paths = [ paths ]
+        if isinstance(paths, str):
+            paths = [paths]
         args.add_cond(paths, paths)
 
         commits, ret = self._git_getoutput('log', args.args)
         if ret:
             where = " on %s" % paths if paths else ""
             raise GitRepositoryError("Error getting commits %s..%s%s" %
-                        (since, until, where))
-        return [ commit.strip() for commit in commits ]
+                                     (since, until, where))
+        return [commit.decode().strip() for commit in commits]
 
     def show(self, id):
-        """git-show id"""
+        """
+        Show a git object
+
+        @rtype: C{bytestr}
+        """
         obj, stderr, ret = self._git_inout('show', ["--pretty=medium", id],
-                                              capture_stderr=True)
+                                           capture_stderr=True)
         if ret:
-            raise GitRepositoryError("can't get %s: %s" % (id, stderr.rstrip()))
+            raise GitRepositoryError("can't get %s: %s" % (id, stderr.decode().rstrip()))
         return obj
 
-    def grep_log(self, regex, since=None):
+    def grep_log(self, regex, since=None, merges=True):
         """
         Get commmits matching I{regex}
 
@@ -1523,19 +1687,19 @@ class GitRepository(object):
         @param since: where to start grepping (e.g. a branch)
         @type since: C{str}
         """
-        args = ['--pretty=format:%H']
-        args.append("--grep=%s" % regex)
-        if since:
-            args.append(since)
-        args.append('--')
+        args = GitArgs('--pretty=format:%H')
+        args.add_false(merges, '--no-merges')
+        args.add('--grep=%s' % regex)
+        args.add_true(since, since)
+        args.add('--')
 
-        stdout, stderr, ret = self._git_inout('log', args,
+        stdout, stderr, ret = self._git_inout('log', args.args,
                                               capture_stderr=True)
         if ret:
             raise GitRepositoryError("Error grepping log for %s: %s" %
-                                     (regex, stderr[:-1]))
+                                     (regex, stderr.decode().strip()))
         if stdout:
-            return [ commit.strip() for commit in stdout.split('\n')[::-1] ]
+            return [commit.strip() for commit in stdout.decode().split('\n')[::-1]]
         else:
             return []
 
@@ -1562,37 +1726,40 @@ class GitRepository(object):
         """
         commit_sha1 = self.rev_parse("%s^0" % commitish)
         args = GitArgs('--pretty=format:%an%x00%ae%x00%ad%x00%cn%x00%ce%x00%cd%x00%s%x00%f%x00%b%x00',
-                       '-z', '--date=raw', '--name-status', commit_sha1)
-        out, err, ret =  self._git_inout('show', args.args)
+                       '-z', '--date=raw', '--no-renames', '--name-status',
+                       '--no-show-signature', commit_sha1)
+        out, err, ret = self._git_inout('show', args.args)
         if ret:
             raise GitRepositoryError("Unable to retrieve commit info for %s"
                                      % commitish)
 
-        fields = out.split('\x00')
+        fields = out.split(b'\x00')
 
-        author = GitModifier(fields[0].strip(),
-                             fields[1].strip(),
-                             fields[2].strip())
-        committer = GitModifier(fields[3].strip(),
-                                fields[4].strip(),
-                                fields[5].strip())
+        author = GitModifier(fields[0].decode().strip(),
+                             fields[1].decode().strip(),
+                             fields[2].decode().strip())
+        committer = GitModifier(fields[3].decode().strip(),
+                                fields[4].decode().strip(),
+                                fields[5].decode().strip())
 
         files = defaultdict(list)
         file_fields = fields[9:]
+
         # For some reason git returns one extra empty field for merge commits
-        if file_fields[0] == '': file_fields.pop(0)
-        while len(file_fields) and file_fields[0] != '':
-            status = file_fields.pop(0).strip()
+        if file_fields[0] == b'':
+            file_fields.pop(0)
+        while len(file_fields) and file_fields[0] != b'':
+            status = file_fields.pop(0).decode().strip()
             path = file_fields.pop(0)
             files[status].append(path)
 
-        return {'id' : commitish,
-                'author' : author,
-                'committer' : committer,
-                'subject' : fields[6],
-                'patchname' : fields[7],
-                'body' : fields[8],
-                'files' : files}
+        return {'id': commitish,
+                'author': author,
+                'committer': committer,
+                'subject': fields[6].decode(),
+                'patchname': fields[7].decode(),
+                'body': fields[8].decode(),
+                'files': files}
 
 #{ Patches
     def format_patches(self, start, end, output_dir,
@@ -1619,22 +1786,24 @@ class GitRepository(object):
         options.add_cond(thread, '--thread=%s' % thread, '--no-thread')
 
         output, ret = self._git_getoutput('format-patch', options.args)
-        return [ line.strip() for line in output ]
+        return [line.strip() for line in output]
 
-    def apply_patch(self, patch, index=True, context=None, strip=None):
+    def apply_patch(self, patch, index=True, context=None, strip=None, fix_ws=False):
         """Apply a patch using git apply"""
         args = []
         if context:
-            args += [ '-C', context ]
+            args += ['-C', context]
         if index:
             args.append("--index")
-        if strip != None:
-            args += [ '-p', str(strip) ]
+        if fix_ws:
+            args.append("--whitespace=fix")
+        if strip is not None:
+            args += ['-p', str(strip)]
         args.append(patch)
         self._git_command("apply", args)
 
     def diff(self, obj1, obj2=None, paths=None, stat=False, summary=False,
-             text=False, ignore_submodules=True):
+             text=False, ignore_submodules=True, abbrev=None, renames=False):
         """
         Diff two git repository objects
 
@@ -1653,9 +1822,10 @@ class GitRepository(object):
         @param ignore_submodules: ignore changes to submodules
         @type ignore_submodules: C{bool}
         @return: diff
-        @rtype: C{str}
+        @rtype: C{binary}
         """
         options = GitArgs('-p', '--no-ext-diff')
+        config_args = GitArgs()
         if stat is True:
             options.add('--stat')
         elif stat:
@@ -1663,17 +1833,52 @@ class GitRepository(object):
         options.add_true(summary, '--summary')
         options.add_true(text, '--text')
         options.add_true(ignore_submodules, '--ignore-submodules=all')
+        if isinstance(renames, bool):
+            options.add('-M' if renames else '--no-renames')
+        else:
+            options.add('-M=%s', renames)
         options.add(obj1)
         options.add_true(obj2, obj2)
         if paths:
             options.add('--', paths)
-        output, stderr, ret = self._git_inout('diff', options.args)
+        if abbrev is not None:
+            config_args.add('core.abbrev=%d' % abbrev)
+        output, stderr, ret = self._git_inout('diff',
+                                              options.args,
+                                              config_args=config_args.args)
         if ret:
             raise GitRepositoryError("Git diff failed")
         return output
+
+    def diff_status(self, obj1, obj2):
+        """
+        Get file-status of two git repository objects
+
+        @param obj1: first object
+        @type obj1: C{str}
+        @param obj2: second object
+        @type obj2: C{str}
+        @return: name-status
+        @rtype: C{defaultdict} of C{str}
+        """
+        options = GitArgs('--name-status', '-z', obj1, obj2)
+        output, stderr, ret = self._git_inout('diff', options.args)
+
+        elements = output.split(b'\x00')
+        result = defaultdict(list)
+
+        while elements[0] != b'':
+            status = elements.pop(0).decode()[0]
+            filepath = elements.pop(0)
+            # Expect to have two filenames for renames and copies
+            if status in ['R', 'C']:
+                filepath = elements.pop(0) + '\x00' + filepath
+            result[status].append(filepath)
+
+        return result
 #}
 
-    def archive(self, format, prefix, output, treeish, **kwargs):
+    def archive(self, format, prefix, output, treeish, cwd=None):
         """
         Create an archive from a treeish
 
@@ -1685,39 +1890,52 @@ class GitRepository(object):
         @type output: C{str}
         @param treeish: the treeish to create the archive from
         @type treeish: C{str}
-        @param kwargs: additional commandline options passed to git-archive
+        @param cwd: The directory to run in. Defaults to the current dir
+        @type cwd: C{str}
         """
-        args = [ '--format=%s' % format, '--prefix=%s' % prefix,
-                 '--output=%s' % output, treeish ]
-        out, ret = self._git_getoutput('archive', args, **kwargs)
+        args = ['--format=%s' % format,
+                '--prefix=%s' % prefix,
+                '--output=%s' % output,
+                treeish]
+        out, err, ret = self._git_inout('archive', args, cwd=cwd, capture_stderr=True)
         if ret:
-            raise GitRepositoryError("Unable to archive %s" % treeish)
+            raise GitRepositoryError("Unable to archive %s: %s" % (treeish, err.decode().strip()))
 
-    def collect_garbage(self, auto=False):
+    def collect_garbage(self, auto=False, prune=False, aggressive=False):
         """
         Cleanup unnecessary files and optimize the local repository
 
         param auto: only cleanup if required
         param auto: C{bool}
         """
-        args = [ '--auto' ] if auto else []
-        self._git_command("gc", args)
+        args = GitArgs('--quiet')
+        if prune is True:
+            args.add('--prune')
+        else:
+            args.add_true(prune, '--prune=%s' % prune)
+        args.add_true(aggressive, '--aggressive')
+        args.add_true(auto, '--auto')
+        self._git_command("gc", args.args)
 
 #{ Submodules
 
-    def has_submodules(self):
+    def has_submodules(self, treeish=None):
         """
         Does the repo have any submodules?
 
+        @param treeish: look into treeish
+        @type treeish: C{str}
         @return: C{True} if the repository has any submodules, C{False}
             otherwise
         @rtype: C{bool}
         """
-        if os.path.exists(os.path.join(self.path, '.gitmodules')):
+        if treeish:
+            try:
+                self.show('%s:.gitmodules' % treeish)
+            except GitRepositoryError:
+                return False
             return True
-        else:
-            return False
-
+        return os.path.exists(os.path.join(self.path, '.gitmodules'))
 
     def add_submodule(self, repo_path):
         """
@@ -1726,8 +1944,7 @@ class GitRepository(object):
         @param repo_path: path to submodule
         @type repo_path: C{str}
         """
-        self._git_command("submodule", [ "add", repo_path ])
-
+        self._git_command("submodule", ["add", repo_path])
 
     def update_submodules(self, init=True, recursive=True, fetch=False):
         """
@@ -1743,7 +1960,7 @@ class GitRepository(object):
 
         if not self.has_submodules():
             return
-        args = [ "update" ]
+        args = ["update"]
         if recursive:
             args.append("--recursive")
         if init:
@@ -1752,7 +1969,6 @@ class GitRepository(object):
             args.append("--no-fetch")
 
         self._git_command("submodule", args)
-
 
     def get_submodules(self, treeish, path=None, recursive=True):
         """
@@ -1768,18 +1984,27 @@ class GitRepository(object):
         if path is None:
             path = self.path
 
-        args = [ treeish ]
+        args = [treeish]
         if recursive:
             args += ['-r']
 
-        out, ret =  self._git_getoutput('ls-tree', args, cwd=path)
-        for line in out:
-            mode, objtype, commit, name = line[:-1].split(None, 3)
+        out, err, ret = self._git_inout('ls-tree',
+                                        args,
+                                        cwd=path,
+                                        capture_stderr=True)
+        if ret:
+            raise GitRepositoryError("Failed to list submodules of %s: %s" %
+                                     (treeish, err.decode().strip()))
+        for line in out.split(b'\n'):
+            if not line:
+                continue
+            mode, objtype, commit, name = line.decode().split(None, 3)
+
             # A submodules is shown as "commit" object in ls-tree:
             if objtype == "commit":
                 nextpath = os.path.join(path, name)
-                submodules.append( (nextpath.replace(self.path,'').lstrip('/'),
-                                    commit) )
+                submodules.append((nextpath.replace(self.path, '').lstrip('/'),
+                                   commit))
                 if recursive:
                     submodules += self.get_submodules(commit, path=nextpath,
                                                       recursive=recursive)
@@ -1788,7 +2013,7 @@ class GitRepository(object):
 #{ Repository Creation
 
     @classmethod
-    def create(klass, path, description=None, bare=False):
+    def create(cls, path, description=None, bare=False):
         """
         Create a repository at path
 
@@ -1809,30 +2034,30 @@ class GitRepository(object):
             if not os.path.exists(abspath):
                 os.makedirs(abspath)
             try:
-                stdout, stderr, ret = klass.__git_inout(command='init',
-                                                        args=args.args,
-                                                        input=None,
-                                                        extra_env=None,
-                                                        cwd=abspath,
-                                                        capture_stderr=True)
+                stdout, stderr, ret = cls.git_inout(command='init',
+                                                    args=args.args,
+                                                    input=None,
+                                                    extra_env=None,
+                                                    cwd=abspath,
+                                                    capture_stderr=True)
             except Exception as excobj:
                 raise GitRepositoryError("Error running git init: %s" % excobj)
             if ret:
-                raise GitRepositoryError("Error running git init: %s" % stderr)
+                raise GitRepositoryError("Error running git init: %s" % stderr.decode().strip())
 
             if description:
                 with open(os.path.join(abspath, git_dir, "description"), 'w') as f:
                     description += '\n' if description[-1] != '\n' else ''
                     f.write(description)
-            return klass(abspath)
+            return cls(abspath)
         except OSError as err:
             raise GitRepositoryError("Cannot create Git repository at '%s': %s"
-                                     % (abspath, err[1]))
+                                     % (abspath, err))
         return None
 
     @classmethod
-    def clone(klass, path, remote, depth=0, recursive=False, mirror=False,
-              bare=False, auto_name=True):
+    def clone(cls, path, remote, depth=0, recursive=False, mirror=False,
+              bare=False, auto_name=True, reference=None):
         """
         Clone a git repository at I{remote} to I{path}.
 
@@ -1851,6 +2076,8 @@ class GitRepository(object):
         @param auto_name: If I{True} create a directory below I{path} based on
             the I{remote}s name. Otherwise create the repo directly at I{path}.
         @type auto_name: C{bool}
+        @param reference: create a clone using local objects from I{reference} repository
+        @type reference: C{str}
         @return: git repository object
         @rtype: L{GitRepository}
         """
@@ -1861,10 +2088,11 @@ class GitRepository(object):
             abspath, name = abspath.rsplit('/', 1)
 
         args = GitArgs('--quiet')
-        args.add_true(depth,  '--depth', depth)
+        args.add_true(depth, '--depth', depth)
         args.add_true(recursive, '--recursive')
         args.add_true(mirror, '--mirror')
         args.add_true(bare, '--bare')
+        args.add_true(reference, '--reference', reference)
         args.add(remote)
         args.add_true(name, name)
         try:
@@ -1872,20 +2100,20 @@ class GitRepository(object):
                 os.makedirs(abspath)
 
             try:
-                stdout, stderr, ret = klass.__git_inout(command='clone',
-                                                        args=args.args,
-                                                        input=None,
-                                                        extra_env=None,
-                                                        cwd=abspath,
-                                                        capture_stderr=True)
+                stdout, stderr, ret = cls.git_inout(command='clone',
+                                                    args=args.args,
+                                                    input=None,
+                                                    extra_env=None,
+                                                    cwd=abspath,
+                                                    capture_stderr=True)
             except Exception as excobj:
                 raise GitRepositoryError("Error running git clone: %s" % excobj)
             if ret:
-                raise GitRepositoryError("Error running git clone: %s" % stderr)
+                raise GitRepositoryError("Error running git clone: %s" % stderr.decode())
 
             if not name:
                 try:
-                    name = remote.rstrip('/').rsplit('/',1)[1]
+                    name = remote.rstrip('/').rsplit('/', 1)[1]
                 except IndexError:
                     name = remote.split(':', 1)[1]
                 if (mirror or bare):
@@ -1893,11 +2121,10 @@ class GitRepository(object):
                         name = "%s.git" % name
                 elif name.endswith('.git'):
                     name = name[:-4]
-            return klass(os.path.join(abspath, name))
+            return cls(os.path.join(abspath, name))
         except OSError as err:
             raise GitRepositoryError("Cannot clone Git repository "
                                      "'%s' to '%s': %s"
                                      % (remote, abspath, err[1]))
         return None
 #}
-

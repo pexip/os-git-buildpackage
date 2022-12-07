@@ -13,7 +13,12 @@ import gbp.log
 import gbp.git
 import gbp.command_wrappers
 
+from gbp.deb.policy import DebianPkgPolicy as Policy
+from gbp.deb.git import DebianGitRepository
+from gbp.pkg import Compressor
+
 from gbp.scripts import buildpackage
+from tests.testutils import ls_zip
 
 REPO = None
 REPODIR = None
@@ -22,6 +27,8 @@ SUBMODULES = []
 SUBMODULE_NAMES = ["test_submodule", "sub module"]
 TMPDIR = None
 TESTFILE_NAME = "testfile"
+TESTDIR_NAME = "testdir"
+
 
 class Submodule(object):
     """Class representing remote repo for Git submodule"""
@@ -37,7 +44,7 @@ def setup():
 
     TMPDIR = context.new_tmpdir(__name__)
     REPODIR = TMPDIR.join('test_repo')
-    REPO = gbp.git.GitRepository.create(REPODIR)
+    REPO = DebianGitRepository.create(REPODIR)
 
     for name in SUBMODULE_NAMES:
         SUBMODULES.append(Submodule(name, str(TMPDIR)))
@@ -49,6 +56,7 @@ def teardown():
     """Test module teardown"""
     context.teardown()
 
+
 def test_empty_has_submodules():
     """Test empty repo for submodules"""
     ok_(not REPO.has_submodules())
@@ -57,6 +65,8 @@ def test_empty_has_submodules():
 def _add_dummy_data(repo, msg):
     """Commit dummy data to a Git repository"""
     shutil.copy(".git/HEAD", TESTFILE_NAME)
+    os.mkdir(TESTDIR_NAME)
+    shutil.copy(TESTFILE_NAME, os.path.join(TESTDIR_NAME, TESTFILE_NAME))
     repo.add_files('.', force=True)
     repo.commit_all(msg)
 
@@ -81,16 +91,19 @@ def test_add_submodule():
     REPO.add_submodule(SUBMODULES[0].dir)
     REPO.commit_all(msg='Added submodule %s' % SUBMODULES[0].dir)
 
+
 def test_has_submodules():
     """Check for submodules"""
     ok_(REPO.has_submodules())
+    ok_(REPO.has_submodules('HEAD'))
+    ok_(not REPO.has_submodules('HEAD^'))
 
 
 def test_get_submodules():
     """Check for submodules list of  (name, hash)"""
     modules = REPO.get_submodules("master")[0]
-    eq_(modules[0] , 'test_submodule')
-    eq_(len(modules[1]) , 40)
+    eq_(modules[0], 'test_submodule')
+    eq_(len(modules[1]), 40)
 
 
 def test_dump_tree():
@@ -99,45 +112,81 @@ def test_dump_tree():
     os.mkdir(dumpdir)
     ok_(buildpackage.dump_tree(REPO, dumpdir, "master", True))
     ok_(os.path.exists(os.path.join(dumpdir, TESTFILE_NAME)))
+    ok_(os.path.exists(os.path.join(dumpdir, TESTDIR_NAME, TESTFILE_NAME)))
     ok_(os.path.exists(os.path.join(dumpdir, SUBMODULES[0].name,
                                     TESTFILE_NAME)))
+    # No submodules or subdirs if recursive is False
+    dumpdir = TMPDIR.join("dump2")
+    os.mkdir(dumpdir)
+    ok_(buildpackage.dump_tree(REPO, dumpdir, "master", True, False))
+    ok_(os.path.exists(os.path.join(dumpdir, TESTFILE_NAME)))
+    ok_(not os.path.exists(os.path.join(dumpdir, TESTDIR_NAME)))
+    ok_(not os.path.exists(os.path.join(dumpdir, SUBMODULES[0].name)))
 
 
 def test_create_tarballs():
     """Create an upstream tarball"""
+    class MockedSource:
+        def __init__(self, version):
+            self.name = 'test'
+            self.upstream_version = version
+
+        def upstream_tarball_name(self, compression, component=None):
+            return Policy.build_tarball_name(self.name,
+                                             self.upstream_version,
+                                             compression=compression)
+
+    comp = Compressor('bzip2')
     # Tarball with submodules
-    changelog = { "Source": "test", "Upstream-Version": "0.1" }
-    ok_(buildpackage.git_archive(REPO, changelog, str(TMPDIR), "HEAD", "bzip2",
-                                 "9", True))
+    s = MockedSource('0.1')
+    ok_(REPO.create_upstream_tarball_via_git_archive(s, str(TMPDIR), "HEAD", comp,
+                                                     with_submodules=True))
     # Tarball without submodules
-    changelog = { "Source": "test", "Upstream-Version": "0.2" }
-    ok_(buildpackage.git_archive(REPO, changelog, str(TMPDIR), "HEAD", "bzip2",
-                                 "9", False))
+    s = MockedSource('0.2')
+    ok_(REPO.create_upstream_tarball_via_git_archive(s, str(TMPDIR), "HEAD", comp,
+                                                     with_submodules=False))
+
+
+def test_create_zip_archives():
+    """Create an upstream zip archive"""
+    REPO.archive_comp('HEAD', 'with-submodules.zip', 'test',
+                      None, format='zip', submodules=True)
+    # Check that submodules were included
+    contents = ls_zip('with-submodules.zip')
+    ok_('test/test_submodule/testfile' in contents)
+
+    REPO.archive_comp('HEAD', 'without-submodules.zip', 'test',
+                      None, format='zip', submodules=False)
+    contents = ls_zip('without-submodules.zip')
+    ok_('test/test_submodule/testfile' not in contents)
+
 
 def test_check_tarfiles():
     """Check the contents of the created tarfile"""
     # Check tarball with submodules
     tarobj = tarfile.open(TMPDIR.join("test_0.1.orig.tar.bz2"), 'r:*')
     files = tarobj.getmembers()
-    ok_("test-0.1/.gitmodules" in [ f.name for f in files ])
-    eq_(len(files) , 6)
+    ok_("test-0.1/.gitmodules" in [f.name for f in files])
+    eq_(len(files), 10)
     # Check tarball without submodules
     tarobj = tarfile.open(TMPDIR.join("test_0.2.orig.tar.bz2"), 'r:*')
     files = tarobj.getmembers()
-    ok_(("test-0.2/%s" % TESTFILE_NAME) in [ f.name for f in files ])
-    eq_(len(files) , 4)
+    ok_(("test-0.2/%s" % TESTFILE_NAME) in [f.name for f in files])
+    eq_(len(files), 6)
+
 
 def test_add_whitespace_submodule():
     """Add a second submodule with name containing whitespace"""
     REPO.add_submodule(SUBMODULES[1].dir)
     REPO.commit_all(msg='Added submodule %s' % SUBMODULES[0].dir)
 
+
 def test_get_more_submodules():
     """Check for submodules list of  (name, hash)"""
     module = REPO.get_submodules("master")
     eq_(len(module), len(SUBMODULE_NAMES))
     for module in REPO.get_submodules("master"):
-        eq_(len(module[1]) , 40)
+        eq_(len(module[1]), 40)
         ok_(os.path.basename(module[0]) in SUBMODULE_NAMES)
 
 

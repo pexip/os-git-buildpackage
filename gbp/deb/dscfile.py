@@ -12,38 +12,40 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#    along with this program; if not, please see
+#    <http://www.gnu.org/licenses/>
 """provides some debian source package related helpers"""
 
 import os
 import re
 
 from gbp.errors import GbpError
-from gbp.pkg import UpstreamSource
+from gbp.deb.upstreamsource import DebianUpstreamSource
 from gbp.deb.policy import DebianPkgPolicy
 
+
 class DscFile(object):
-    """Keeps all needed data read from a dscfile"""
-    compressions = r"(%s)" % '|'.join(UpstreamSource.known_compressions())
+    """Keeps data read from a dscfile"""
+    compressions = r"(%s)" % '|'.join(DebianUpstreamSource.known_compressions())
     pkg_re = re.compile(r'Source:\s+(?P<pkg>.+)\s*')
     version_re = re.compile(r'Version:\s((?P<epoch>\d+)\:)?'
-                             '(?P<version>[%s]+)\s*$'
+                            r'(?P<version>[%s]+)\s*$'
                             % DebianPkgPolicy.debianversion_chars)
     tar_re = re.compile(r'^\s\w+\s\d+\s+(?P<tar>[^_]+_[^_]+'
-                         '(\.orig)?\.tar\.%s)' % compressions)
-    extra_tar_re = re.compile(r'^\s\w+\s\d+\s+(?P<tar>[^_]+_[^_]+'
-                         '\.orig-[a-z0-9-]+\.tar\.%s)' % compressions)
+                        r'(\.orig)?\.tar\.%s)$' % compressions)
+    add_tar_re = re.compile(r'^\s\w+\s\d+\s+(?P<tar>[^_]+_[^_]+'
+                            r'\.orig-(?P<dir>[a-zA-Z0-9-]+)\.tar\.%s)$' % compressions)
     diff_re = re.compile(r'^\s\w+\s\d+\s+(?P<diff>[^_]+_[^_]+'
-                          '\.diff.(gz|bz2))')
+                         r'\.diff.(gz|bz2))$')
     deb_tgz_re = re.compile(r'^\s\w+\s\d+\s+(?P<deb_tgz>[^_]+_[^_]+'
-                             '\.debian.tar.%s)' % compressions)
+                            r'\.debian.tar.%s)$' % compressions)
     format_re = re.compile(r'Format:\s+(?P<format>[0-9.]+)\s*')
+    sig_re = re.compile(r'^\s\w+\s\d+\s+(?P<sig>[^_]+_[^_]+'
+                        r'\.orig(-[a-z0-9-]+)?\.tar\.%s.asc)$' % compressions)
 
     def __init__(self, dscfile):
         self.pkg = ""
         self.tgz = ""
-        self.extra_tgz = []
         self.diff = ""
         self.deb_tgz = ""
         self.pkgformat = "1.0"
@@ -51,8 +53,10 @@ class DscFile(object):
         self.upstream_version = ""
         self.native = False
         self.dscfile = os.path.abspath(dscfile)
+        sigs = []
+        add_tars = []
 
-        f = open(self.dscfile)
+        f = open(self.dscfile, encoding='utf-8')
         fromdir = os.path.dirname(os.path.abspath(dscfile))
         for line in f:
             m = self.version_re.match(line)
@@ -62,7 +66,7 @@ class DscFile(object):
                     self.upstream_version = "-".join(m.group('version').split("-")[0:-1])
                     self.native = False
                 else:
-                    self.native = True # Debian native package
+                    self.native = True  # Debian native package
                     self.upstream_version = m.group('version')
                 if m.group('epoch'):
                     self.epoch = m.group('epoch')
@@ -77,15 +81,18 @@ class DscFile(object):
             if m:
                 self.deb_tgz = os.path.join(fromdir, m.group('deb_tgz'))
                 continue
-            m = self.extra_tar_re.match(line)
+            m = self.add_tar_re.match(line)
             if m:
-                extratgz = os.path.join(fromdir, m.group('tar'))
-                if extratgz not in self.extra_tgz:
-                    self.extra_tgz.append(extratgz)
+                add_tars.append((m.group('dir'),
+                                 os.path.join(fromdir, m.group('tar'))))
                 continue
             m = self.tar_re.match(line)
             if m:
                 self.tgz = os.path.join(fromdir, m.group('tar'))
+                continue
+            m = self.sig_re.match(line)
+            if m:
+                sigs.append(os.path.join(fromdir, m.group('sig')))
                 continue
             m = self.diff_re.match(line)
             if m:
@@ -97,12 +104,12 @@ class DscFile(object):
                 continue
         f.close()
 
-        if not self.deb_tgz and not self.diff and '.orig.' not in self.tgz:
-            # This package is actually native, despite the version identifier
-            self.native = True
-            if self.debian_version:
-                self.upstream_version += "-%s" % (self.debian_version, )
-                self.debian_version = ""
+        # Source format 1.0 can have non-native packages without a Debian revision:
+        # e.g. http://snapshot.debian.org/archive/debian/20090801T192339Z/pool/main/l/latencytop/latencytop_0.5.dsc
+        if self.pkgformat == "1.0" and self.diff:
+            self.native = False
+        elif not self.native and not self.debian_version:
+            raise GbpError("Cannot parse Debian version number from '%s'" % self.dscfile)
 
         if not self.pkg:
             raise GbpError("Cannot parse package name from '%s'" % self.dscfile)
@@ -110,18 +117,20 @@ class DscFile(object):
             raise GbpError("Cannot parse archive name from '%s'" % self.dscfile)
         if not self.upstream_version:
             raise GbpError("Cannot parse version number from '%s'" % self.dscfile)
-        if not self.native and not self.debian_version:
-            raise GbpError("Cannot parse Debian version number from '%s'" % self.dscfile)
+        self.additional_tarballs = dict(add_tars)
+        self.sigs = list(set(sigs))
 
-    def _get_version(self):
-        version = [ "", self.epoch + ":" ][len(self.epoch) > 0]
+    @property
+    def version(self):
+        version = ["", self.epoch + ":"][len(self.epoch) > 0]
         if self.native:
             version += self.upstream_version
         else:
-            version += "%s-%s" % (self.upstream_version, self.debian_version)
+            if self.debian_version != '':
+                version += "%s-%s" % (self.upstream_version, self.debian_version)
+            else:   # possible in 1.0
+                version += "%s" % self.upstream_version
         return version
-
-    version = property(_get_version)
 
     def __str__(self):
         return "<%s object %s>" % (self.__class__.__name__, self.dscfile)

@@ -1,7 +1,7 @@
 # vim: set fileencoding=utf-8 :
 #
 # (C) 2012 Intel Corporation <markus.lehtonen@linux.intel.com>
-#     2013 Guido Günther <agx@sigxcpu.org>
+#     2013,2017 Guido Günther <agx@sigxcpu.org>
 #
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -14,21 +14,27 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#    along with this program; if not, please see
+#    <http://www.gnu.org/licenses/>
 """
 Module for testing individual command line tools of the git-buildpackage suite
 """
 
+import hashlib
 import os
 import shutil
 import tempfile
-from StringIO import StringIO
+import unittest
+from unittest import skipUnless
 from nose import SkipTest
 from nose.tools import eq_, ok_     # pylint: disable=E0611
+from .. testutils import GbpLogTester
 
-import gbp.log
-from  gbp.git import GitRepository, GitRepositoryError
+from gbp.git import GitRepository, GitRepositoryError
+
+
+__all__ = ['ComponentTestGitRepository', 'ComponentTestBase', 'GbpLogTester', 'skipUnless']
+
 
 class ComponentTestGitRepository(GitRepository):
     """Git repository class for component tests"""
@@ -42,7 +48,7 @@ class ComponentTestGitRepository(GitRepository):
             raise GitRepositoryError("Cannot get submodule status: %s" %
                                      err.strip())
         submodules = {}
-        for line in out.splitlines():
+        for line in out.decode().splitlines():
             module = line.strip()
             # Uninitialized
             status = module[0]
@@ -74,41 +80,78 @@ class ComponentTestGitRepository(GitRepository):
             raise SkipTest("Skipping '%s', testdata directory not initialized. "
                            "Consider doing 'git submodule update'" % __name__)
 
+    def ls_tree(self, treeish):
+        """List contents (blobs) in a git treeish"""
+        objs = self.list_tree(treeish, True)
+        blobs = [obj[3] for obj in objs if obj[1] == 'blob']
+        return set(blobs)
 
-class ComponentTestBase(object):
+    def get_head_author_subject(self):
+        out, err, ret = self._git_inout('format-patch', ['-1', '--stdout', '--subject-prefix='],
+                                        capture_stderr=True)
+        if ret:
+            raise GitRepositoryError("Cannot get head author/subject: %s" %
+                                     err.strip())
+
+        output = out.decode('utf-8')
+        for line in output.split('\n'):
+            line = line.strip()
+            if not line:
+                # end of headers
+                break
+            if line.startswith('From:'):
+                author = line.replace('From:', '').strip()
+            elif line.startswith('Subject:'):
+                subject = line.replace('Subject:', '').strip()
+        return author, subject
+
+
+class ComponentTestBase(unittest.TestCase, GbpLogTester):
     """Base class for testing cmdline tools of git-buildpackage"""
 
     @classmethod
-    def setup_class(cls):
+    def setUpClass(cls):
         """Test class case setup"""
         # Don't let git see that we're (possibly) under a git directory
         cls.orig_env = os.environ.copy()
         os.environ['GIT_CEILING_DIRECTORIES'] = os.getcwd()
+        # Create a top-level tmpdir for the test
+        cls._tmproot = tempfile.mkdtemp(prefix='gbp_%s_' % cls.__name__,
+                                        dir='.')
+        cls._tmproot = os.path.abspath(cls._tmproot)
+        # Prevent local config files from messing up the tests
+        os.environ['GBP_CONF_FILES'] = ':'.join(['%(top_dir)s/.gbp.conf',
+                                                 '%(top_dir)s/debian/gbp.conf',
+                                                 '%(git_dir)s/gbp.conf'])
 
     @classmethod
-    def teardown_class(cls):
+    def tearDownClass(cls):
         """Test class case teardown"""
         # Return original environment
         os.environ.clear()
         os.environ.update(cls.orig_env)
+        # Remove top-level tmpdir
+        if not os.getenv("GBP_TESTS_NOCLEAN"):
+            shutil.rmtree(cls._tmproot)
 
-    def __init__(self):
+    def __init__(self, methodName='runTest'):
         """Object initialization"""
         self._orig_dir = None
         self._tmpdir = None
-        self._log = None
-        self._loghandler = None
+        unittest.TestCase.__init__(self, methodName)
+        GbpLogTester.__init__(self)
 
-    def setup(self):
+    def setUp(self):
         """Test case setup"""
         # Change to a temporary directory
         self._orig_dir = os.getcwd()
-        self._tmpdir = tempfile.mkdtemp(prefix='gbp_%s_' % __name__, dir='.')
+        self._tmpdir = tempfile.mkdtemp(prefix='tmp_%s_' % self._testMethodName,
+                                        dir=self._tmproot)
         os.chdir(self._tmpdir)
 
         self._capture_log(True)
 
-    def teardown(self):
+    def tearDown(self):
         """Test case teardown"""
         # Restore original working dir
         os.chdir(self._orig_dir)
@@ -117,9 +160,29 @@ class ComponentTestBase(object):
 
         self._capture_log(False)
 
+    @staticmethod
+    def check_files(reference, filelist):
+        """Compare two file lists"""
+        extra = set(filelist) - set(reference)
+        missing = set(reference) - set(filelist)
+        assert_msg = "Unexpected files: %s, Missing files: %s" % \
+                     (list(extra), list(missing))
+        assert not extra and not missing, assert_msg
+
     @classmethod
-    def _check_repo_state(cls, repo, current_branch, branches, files=None):
-        """Check that repository is clean and given branches exist"""
+    def check_tags(cls, repo, tags):
+        local_tags = repo.tags
+        assert_msg = "Tags: expected %s, found %s" % (tags,
+                                                      local_tags)
+        eq_(set(local_tags), set(tags), assert_msg)
+
+    @classmethod
+    def _check_repo_state(cls, repo, current_branch, branches, files=None,
+                          dirs=None, tags=None, clean=True):
+        """
+        Check that repository is clean and given branches, tags, files
+        and dirs exist
+        """
         branch = repo.branch
         eq_(branch, current_branch)
         ok_(repo.is_clean())
@@ -127,54 +190,81 @@ class ComponentTestBase(object):
         assert_msg = "Branches: expected %s, found %s" % (branches,
                                                           local_branches)
         eq_(set(local_branches), set(branches), assert_msg)
-        if files is not None:
+
+        if files is not None or dirs is not None:
             # Get files of the working copy recursively
-            local = set()
+            local_f = set()
+            local_d = set()
             for dirpath, dirnames, filenames in os.walk(repo.path):
                 # Skip git dir(s)
                 if '.git' in dirnames:
                     dirnames.remove('.git')
                 for filename in filenames:
-                    local.add(os.path.relpath(os.path.join(dirpath, filename),
-                                              repo.path))
+                    local_f.add(os.path.relpath(os.path.join(dirpath, filename),
+                                                repo.path))
                 for dirname in dirnames:
-                    local.add(os.path.relpath(os.path.join(dirpath, dirname),
-                                              repo.path) + '/')
-            extra = local - set(files)
-            ok_(not extra, "Unexpected files in repo: %s" % list(extra))
-            missing = set(files) - local
-            ok_(not missing, "Files missing from repo: %s" % list(missing))
+                    local_d.add(os.path.relpath(os.path.join(dirpath, dirname),
+                                                repo.path) + '/')
+            if files is not None:
+                cls.check_files(files, local_f)
+            if dirs is not None:
+                cls.check_files(dirs, local_d)
+        if tags is not None:
+            cls.check_tags(repo, tags)
+        if clean:
+            clean, files = repo.is_clean()
+            ok_(clean, "Repo has uncommitted files %s" % files)
 
-    def _capture_log(self, capture=True):
-        """ Capture log"""
-        if capture and self._log is None:
-            self._log = StringIO()
-            self._loghandler = gbp.log.GbpStreamHandler(self._log, False)
-            self._loghandler.addFilter(gbp.log.GbpFilter([gbp.log.WARNING,
-                                                          gbp.log.ERROR]))
-            gbp.log.LOGGER.addHandler(self._loghandler)
-        elif self._log is not None:
-            gbp.log.LOGGER.removeHandler(self._loghandler)
-            self._loghandler.close()
-            self._loghandler = None
-            self._log.close()
-            self._log = None
+    @classmethod
+    def rem_refs(cls, repo, refs):
+        """Remember the SHA1 of the given refs"""
+        rem = []
+        for name in refs:
+            rem.append((name, repo.rev_parse(name)))
+        return rem
 
-    def _get_log(self):
-        """Get the captured log output"""
-        self._log.seek(0)
-        return self._log.readlines()
+    @classmethod
+    def check_refs(cls, repo, rem):
+        """
+        Check that the heads given n (head, sha1) tuples are
+        still pointing to the given sha1
+        """
+        for (h, s) in rem:
+            n = repo.rev_parse(h)
+            ok_(n == s, "Head '%s' points to %s' instead of '%s'" % (h, n, s))
 
-    def _check_log(self, linenum, string):
-        """Check that the specified line on log matches expectations"""
-        if self._log is None:
-            raise Exception("BUG in unittests: no log captured!")
-        output = self._get_log()[linenum].strip()
-        ok_(output.startswith(string), ("Expected: '%s...' Got: '%s'" %
-                                        (string, output)))
+    @staticmethod
+    def hash_file(filename):
+        h = hashlib.md5()
+        with open(filename, 'rb') as f:
+            buf = f.read()
+            h.update(buf)
+        return h.hexdigest()
 
-    def _clear_log(self):
-        """Clear the mock strerr"""
-        if self._log is not None:
-            self._log.seek(0)
-            self._log.truncate()
+    @staticmethod
+    def check_hook_vars(name, expected):
+        """
+        Check that a hook had the given vars in
+        it's environment.
+        This assumes the hook was set too
+            printenv > hookname.out
+        """
+        with open('%s.out' % name, encoding='utf-8') as f:
+            parsed = dict([line[:-1].split('=', 1) for line in f.readlines() if line.startswith("GBP_")])
+
+        for var in expected:
+            if len(var) == 2:
+                k, v = var
+            else:
+                k, v = var, None
+            ok_(k in parsed, "%s not found in %s" % (k, parsed))
+            if v is not None:
+                ok_(v == parsed[k],
+                    "Got %s not expected value %s for %s" % (parsed[k], v, k))
+
+    @staticmethod
+    def add_file(repo, name, content=None):
+        with open(name, 'w') as f:
+            f.write(' ' or content)
+        repo.add_files(name)
+        repo.commit_files(name, 'New file %s' % name)

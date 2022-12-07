@@ -1,6 +1,6 @@
 # vim: set fileencoding=utf-8 :
 #
-# (C) 2011 Guido Guenther <agx@sigxcpu.org>
+# (C) 2011 Guido Günther <agx@sigxcpu.org>
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation; either version 2 of the License, or
@@ -12,13 +12,14 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#    along with this program; if not, please see
+#    <http://www.gnu.org/licenses/>
 """
 Git command argument handling helpers
 """
 
 import collections
+
 
 class GitArgs(object):
     """
@@ -55,7 +56,7 @@ class GitArgs(object):
         Add arguments to argument list
         """
         for arg in args:
-            if isinstance(arg, basestring):
+            if isinstance(arg, str):
                 self._args.append(arg)
             elif isinstance(arg, collections.Iterable):
                 for i in iter(arg):
@@ -105,4 +106,3 @@ class GitArgs(object):
         else:
             self.add(noopt)
         return self
-

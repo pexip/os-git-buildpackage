@@ -12,8 +12,8 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#    along with this program; if not, please see
+#    <http://www.gnu.org/licenses/>
 """A Debian Changelog"""
 
 import email
@@ -21,9 +21,11 @@ import os
 import subprocess
 from gbp.command_wrappers import Command
 
+
 class NoChangeLogError(Exception):
     """No changelog found"""
     pass
+
 
 class ParseChangeLogError(Exception):
     """Problem parsing changelog"""
@@ -45,7 +47,7 @@ class ChangeLogSection(object):
         return self._version
 
     @classmethod
-    def parse(klass, section):
+    def parse(cls, section):
         """
         Parse one changelog section
 
@@ -57,7 +59,7 @@ class ChangeLogSection(object):
         header = section.split('\n')[0]
         package = header.split()[0]
         version = header.split()[1][1:-1]
-        return klass(package, version)
+        return cls(package, version)
 
 
 class ChangeLog(object):
@@ -76,7 +78,7 @@ class ChangeLog(object):
 
         # Check that either contents or filename is passed (but not both)
         if (not filename and not contents) or (filename and contents):
-            raise Exception("Either filename or contents must be passed")
+            raise ValueError("Either filename or contents must be passed")
 
         if filename and not os.access(filename, os.F_OK):
             raise NoChangeLogError("Changelog %s not found" % (filename, ))
@@ -87,16 +89,21 @@ class ChangeLog(object):
             self._read()
         self._parse()
 
-    def _parse(self):
-        """Parse a changelog based on the already read contents."""
-        cmd = subprocess.Popen(['dpkg-parsechangelog', '-l-'],
-                                stdin=subprocess.PIPE,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
-        (output, errors) = cmd.communicate(self._contents)
+    def _run_parsechangelog(self, options=None):
+        options = options if options is not None else []
+        cmd = subprocess.Popen(['dpkg-parsechangelog', '-l-'] + options,
+                               stdin=subprocess.PIPE,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)
+        (stdout, stderr) = cmd.communicate(self._contents.encode('utf-8'))
         if cmd.returncode:
             raise ParseChangeLogError("Failed to parse changelog. "
-                                      "dpkg-parsechangelog said:\n%s" % (errors, ))
+                                      "dpkg-parsechangelog said:\n%s" % stderr.decode().strip())
+        return stdout.decode()
+
+    def _parse(self):
+        """Parse a changelog based on the already read contents."""
+        output = self._run_parsechangelog()
         # Parse the result of dpkg-parsechangelog (which looks like
         # email headers)
         cp = email.message_from_string(output)
@@ -109,13 +116,23 @@ class ChangeLog(object):
                 cp['Upstream-Version'], cp['Debian-Version'] = cp['NoEpoch-Version'].rsplit('-', 1)
             else:
                 cp['Debian-Version'] = cp['NoEpoch-Version']
+
+            # py3's email.message_from_string() saves dpkg-parsechangelog's
+            # first newline from the "Changes" field.
+            changes = cp['Changes'].lstrip("\n")
+            del cp['Changes']
+            cp['Changes'] = changes
         except TypeError:
             raise ParseChangeLogError(output.split('\n')[0])
 
         self._cp = cp
 
     def _read(self):
-            with open(self.filename) as f:
+        try:
+            with open(self.filename, encoding='utf-8') as f:
+                self._contents = f.read()
+        except UnicodeDecodeError:
+            with open(self.filename, encoding='iso-8859-1') as f:
                 self._contents = f.read()
 
     def __getitem__(self, item):
@@ -131,13 +148,17 @@ class ChangeLog(object):
 
     @property
     def name(self):
-        """The packges name"""
+        """The packages name"""
         return self._cp['Source']
 
     @property
     def version(self):
-       """The full version string"""
-       return self._cp['Version']
+        """The full version string"""
+        return self._cp['Version']
+
+    @property
+    def distribution(self):
+        return self._cp['Distribution']
 
     @property
     def upstream_version(self):
@@ -175,21 +196,22 @@ class ChangeLog(object):
         @return: C{True} if the version has an epoch, C{False} otherwise
         @rtype: C{bool}
         """
-        return self._cp.has_key('Epoch')
+        return 'Epoch' in self._cp
 
     @property
     def author(self):
         """
         The author of the last modification
         """
-        return email.Utils.parseaddr(self._cp['Maintainer'])[0]
+
+        return self._parse_maint(self._cp['Maintainer'])[0]
 
     @property
     def email(self):
         """
         The author's email
         """
-        return email.Utils.parseaddr(self._cp['Maintainer'])[1]
+        return self._parse_maint(self._cp['Maintainer'])[1]
 
     @property
     def date(self):
@@ -205,7 +227,7 @@ class ChangeLog(object):
         """
         section = ''
         for line in self._contents.split('\n'):
-            if line and line[0] not in [ ' ', '\t' ]:
+            if line and line[0] not in [' ', '\t']:
                 section += line
             else:
                 if section:
@@ -221,7 +243,7 @@ class ChangeLog(object):
 
     @staticmethod
     def spawn_dch(msg=[], author=None, email=None, newversion=False, version=None,
-                  release=False, distribution=None, dch_options=[]):
+                  release=False, distribution=None, dch_options=None):
         """
         Spawn dch
 
@@ -254,30 +276,37 @@ class ChangeLog(object):
             args.extend(["--release", "--no-force-save-on-release"])
             msg = None
 
-        if author and email:
-            env = {'DEBFULLNAME': author, 'DEBEMAIL': email}
+        if author:
+            env['DEBFULLNAME'] = author.encode('utf-8')
+        if email:
+            env['DEBEMAIL'] = email.encode('utf-8')
 
         if distribution:
             args.append("--distribution=%s" % distribution)
 
-        args.extend(dch_options)
+        args.extend(dch_options or [])
+
+        if '--create' in args:
+            env['EDITOR'] = env['VISUAL'] = '/bin/true'
+
         args.append('--')
         if msg:
             args.append('[[[insert-git-dch-commit-message-here]]]')
         else:
             args.append('')
-        dch = Command('dch', args, extra_env=env)
-        dch.call([])
+        dch = Command('debchange', args, extra_env=env, capture_stderr=True)
+        dch.run_error = Command._f("Dch failed: {stderr_or_reason}")
+        dch([], quiet=True)
         if msg:
-            old_cl = open("debian/changelog", "r")
-            new_cl = open("debian/changelog.bak", "w")
+            old_cl = open("debian/changelog", "r", encoding='utf-8')
+            new_cl = open("debian/changelog.bak", "w", encoding='utf-8')
             for line in old_cl:
                 if line == "  * [[[insert-git-dch-commit-message-here]]]\n":
-                    print >> new_cl, "  * " + msg[0]
+                    print("  * " + msg[0], file=new_cl)
                     for line in msg[1:]:
-                        print >> new_cl, "    " + line
+                        print("    " + line, file=new_cl)
                 else:
-                    print >> new_cl, line,
+                    print(line, end='', file=new_cl)
             os.rename("debian/changelog.bak", "debian/changelog")
 
     def add_entry(self, msg, author=None, email=None, dch_options=[]):
@@ -313,3 +342,36 @@ class ChangeLog(object):
         """
         self.spawn_dch(msg=msg, newversion=True, version=version, author=author,
                        email=email, distribution=distribution, dch_options=dch_options)
+
+    def get_changes(self, since='0~'):
+        return self._run_parsechangelog(['-v%s' % since, '-SChanges'])
+
+    @staticmethod
+    def _parse_maint(maintainer):
+        """
+        Parse maintainer
+
+        Mostly rfc822 but we allow for commas
+        """
+        def _quote(u):
+            return u.replace(',', '##comma##')
+
+        def _unquote(q):
+            return q.replace('##comma##', ',')
+
+        name, mail = email.utils.parseaddr(_quote(maintainer or ''))
+        return (_unquote(name), _unquote(mail))
+
+    @classmethod
+    def create(cls, package=None, version=None):
+        """
+        Create a new, empty changelog
+        """
+        dch_options = ['--create']
+        if package:
+            dch_options.extend(['--package', package])
+        if version:
+            dch_options.extend(['--newversion', version])
+
+        cls.spawn_dch(dch_options=dch_options)
+        return cls(filename='debian/changelog')

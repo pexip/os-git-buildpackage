@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # vim: set fileencoding=utf-8 :
 #
 # (C) 2013 Guido Günther <agx@sigxcpu.org>
@@ -13,16 +13,19 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#    along with this program; if not, please see
+#    <http://www.gnu.org/licenses/>
 """Supercommand for all gbp commands"""
 
+import glob
+import os
 import re
 import sys
 
 # Command is this module and common/ is shared code
 # so we don't allow these to be imported:
-invalid_modules = [ 'common', 'supercommand' ]
+invalid_modules = ['common', 'supercommand']
+
 
 def sanitize(cmd):
     """
@@ -31,8 +34,9 @@ def sanitize(cmd):
     """
     return cmd.replace('-', '_')
 
+
 def usage():
-    print """
+    print("""
 Usage:
     gbp <command> [<args>]
 
@@ -42,17 +46,63 @@ The most commonly used commands are:
     import-orig  - import a new upstream tarball
     import-dsc   - import a single Debian source package
     import-dscs  - import multiple Debian source packages
-"""
 
-def import_command(modulename):
+Use '--list-cmds' to list all available commands.
+""")
+
+
+def version(prog):
+    try:
+        from gbp.version import gbp_version
+    except ImportError:
+        gbp_version = '[Unknown version]'
+    print("%s %s" % (os.path.basename(prog), gbp_version))
+
+
+def import_command(cmd):
     """
     Import the module that implements the given command
     """
+    modulename = sanitize(cmd)
     if (not re.match(r'[a-z][a-z0-9_]', modulename) or
-        modulename in invalid_modules):
+            modulename in invalid_modules):
         raise ImportError('Illegal module name %s' % modulename)
 
     return __import__('gbp.scripts.%s' % modulename, fromlist='main', level=0)
+
+
+def pymod_to_cmd(mod):
+    """
+    >>> pymod_to_cmd('/x/y/z/a_cmd.py')
+    'a-cmd'
+    """
+    return os.path.basename(mod.rsplit('.', 1)[0]).replace('_', '-')
+
+
+def get_available_commands(path):
+    cmds = []
+    for f in glob.glob(os.path.join(path, '*.py')):
+        if os.path.basename(f) in ['__init__.py', 'supercommand.py']:
+            continue
+        cmds.append((pymod_to_cmd(f), f))
+    return cmds
+
+
+def list_available_commands():
+    mod = __import__('gbp.scripts', fromlist='main', level=0)
+    path = os.path.dirname(mod.__file__)
+    maxlen = 0
+
+    print("Available commands in %s\n" % path)
+    cmds = sorted(get_available_commands(path))
+    for cmd in cmds:
+        if len(cmd[0]) > maxlen:
+            maxlen = len(cmd[0])
+    for cmd in cmds:
+        mod = import_command(cmd[0])
+        doc = mod.__doc__
+        print("    %s - %s" % (cmd[0].rjust(maxlen), doc))
+    print('')
 
 
 def supercommand(argv=None):
@@ -62,23 +112,40 @@ def supercommand(argv=None):
         usage()
         return 1
 
-    cmd = argv[1]
+    prg, cmd = argv[0:2]
     args = argv[1:]
 
     if cmd in ['--help', '-h']:
         usage()
         return 0
+    elif cmd == 'help' and len(args) > 1:
+        # Make the first argument after help the new commadn and
+        # request it's help output
+        cmd = args[1]
+        args = [cmd, '--help']
+    elif cmd == 'help':
+        usage()
+        return 0
+    elif cmd in ['--version', 'version']:
+        version(argv[0])
+        return 0
+    elif cmd in ['--list-cmds', 'list-cmds']:
+        list_available_commands()
+        return 0
 
-    modulename = sanitize(cmd)
     try:
-        module = import_command(modulename)
+        module = import_command(cmd)
     except ImportError as e:
-        print >>sys.stderr, "'%s' is not a valid command." % cmd
+        print("'%s' is not a valid command." % cmd, file=sys.stderr)
         usage()
         if '--verbose' in args:
-            print >>sys.stderr, e
+            print(e, file=sys.stderr)
         return 2
 
     return module.main(args)
+
+
+if __name__ == '__main__':
+    sys.exit(supercommand())
 
 # vim:et:ts=4:sw=4:et:sts=4:ai:set list listchars=tab\:»·,trail\:·:

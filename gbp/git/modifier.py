@@ -1,6 +1,6 @@
 # vim: set fileencoding=utf-8 :
 #
-# (C) 2011 Guido Guenther <agx@sigxcpu.org>
+# (C) 2011 Guido Günther <agx@sigxcpu.org>
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation; either version 2 of the License, or
@@ -12,21 +12,24 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#    along with this program; if not, please see
+#    <http://www.gnu.org/licenses/>
 """
 Someone who modifiers something in git
 
 like committing changes or authoring a patch
 """
 
-import calendar, datetime
+import calendar
+import datetime
 
 from gbp.git.errors import GitError
+
 
 class GitModifierError(GitError):
     """Exception thrown by L{GitModifier}"""
     pass
+
 
 class GitTz(datetime.tzinfo):
     """Simple class to store the utc offset only"""
@@ -40,8 +43,9 @@ class GitTz(datetime.tzinfo):
     def dst(self, dt):
         return datetime.timedelta(0)
 
+
 class GitModifier(object):
-    """Stores authorship/comitter information"""
+    """Stores authorship/committer information"""
     def __init__(self, name=None, email=None, date=None):
         """
         @param name: the modifier's name
@@ -59,28 +63,28 @@ class GitModifier(object):
         self._date = None
         tz = GitTz(0)
 
-        if isinstance(date, basestring):
+        if isinstance(date, str):
             timestamp, offset = date.split()
             offset_h = int(offset[:-2])
             offset_m = int(offset[-2:])
-            tz = GitTz(offset_h*3600 + offset_m*60)
+            tz = GitTz(offset_h * 3600 + offset_m * 60)
             self._date = datetime.datetime.fromtimestamp(int(timestamp), tz)
-        elif type(date) in  [ type(0), type(0.0) ]:
+        elif type(date) in [type(0), type(0.0)]:
             self._date = datetime.datetime.fromtimestamp(date, tz)
         elif isinstance(date, datetime.datetime):
             if date.tzinfo:
                 self._date = date
             else:
                 self._date = date.replace(tzinfo=tz)
-        elif date != None:
+        elif date is not None:
             raise ValueError("Date '%s' not timestamp, "
                              "datetime object or git raw date" % date)
 
     def _get_env(self, who):
-        """Get author or comitter information as env var dictionary"""
+        """Get author or committer information as env var dictionary"""
         who = who.upper()
         if who not in ['AUTHOR', 'COMMITTER']:
-            raise GitModifierError("Neither comitter nor author")
+            raise GitModifierError("Neither committer nor author")
 
         extra_env = {}
         if self.name:
@@ -119,9 +123,11 @@ class GitModifier(object):
         """
         Get env vars for authorship information
 
-        >>> g = GitModifier("foo", "bar")
-        >>> g.get_author_env()
-        {'GIT_AUTHOR_EMAIL': 'bar', 'GIT_AUTHOR_NAME': 'foo'}
+        >>> g = GitModifier("Joey Ramone", "joey@example.com")
+        >>> g.get_author_env()['GIT_AUTHOR_EMAIL']
+        'joey@example.com'
+        >>> g.get_author_env()['GIT_AUTHOR_NAME']
+        'Joey Ramone'
 
         @return: Author information suitable to use as environment variables
         @rtype: C{dict}
@@ -130,16 +136,24 @@ class GitModifier(object):
 
     def get_committer_env(self):
         """
-        Get env vars for comitter information
+        Get env vars for committer information
 
-        >>> g = GitModifier("foo", "bar")
-        >>> g.get_committer_env()
-        {'GIT_COMMITTER_NAME': 'foo', 'GIT_COMMITTER_EMAIL': 'bar'}
+        >>> g = GitModifier("Joey Ramone", "joey@example.com")
+        >>> g.get_committer_env()['GIT_COMMITTER_EMAIL']
+        'joey@example.com'
+        >>> g.get_committer_env()['GIT_COMMITTER_NAME']
+        'Joey Ramone'
 
-        @return: Commiter information suitable to use as environment variables
+        @return: Committer information suitable to use as environment variables
         @rtype: C{dict}
         """
         return self._get_env('committer')
+
+    def get(self, key, default=None):
+        if key in self.keys():
+            return self.__getitem__(key)
+        else:
+            return default
 
     def __getitem__(self, key):
         if key == 'date':
@@ -149,7 +163,7 @@ class GitModifier(object):
 
     @staticmethod
     def keys():
-        return [ 'name', 'email', 'date' ]
+        return ['name', 'email', 'date']
 
     def items(self):
         items = []

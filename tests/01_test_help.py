@@ -2,26 +2,37 @@
 
 """Check if --help works"""
 
-from . import context
+from . import context  # noqa: F401
 
-import unittest
+from .testutils.data import TestCaseWithData
 
-class TestHelp(unittest.TestCase):
+
+class TestHelp(TestCaseWithData):
     """Test help output of gbp commands"""
 
-    def testHelp(self):
-        for script in ['buildpackage',
-                      'clone',
-                      'create_remote_repo',
-                      'dch',
-                      'import_orig',
-                      'import_dsc',
-                      'pull',
-                      'pq']:
-            module = 'gbp.scripts.%s' % script
-            m = __import__(module, globals(), locals(), ['main'], -1)
-            self.assertRaises(SystemExit,
-                              m.main,
-                              ['doesnotmatter', '--help'])
+    deb_cmds = ['buildpackage',
+                'config',
+                'create_remote_repo',
+                'dch',
+                'import_orig',
+                'import_ref',
+                'import_dsc',
+                'pristine_tar',
+                'pull',
+                'push',
+                'pq',
+                'tag']
+
+    rpm_cmds = ['buildpackage_rpm',
+                'import_srpm',
+                'rpm_ch',
+                'pq_rpm']
+
+    @TestCaseWithData.feed(deb_cmds + rpm_cmds)
+    def testHelp(self, script):
+        module = 'gbp.scripts.%s' % script
+        m = __import__(module, globals(), locals(), ['main'], 0)
+        with self.assertRaises(SystemExit):
+            m.main(['doesnotmatter', '--help'])
 
 # vim:et:ts=4:sw=4:et:sts=4:ai:set list listchars=tab\:»·,trail\:·:
