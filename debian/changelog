@@ -1,3 +1,9 @@
+git-buildpackage (0.9.22pexip1) pexip; urgency=low
+
+  * New upstream version
+
+ -- Huw Jones <huw@pexip.com>  Wed, 07 Dec 2022 17:09:54 +0000
+
 git-buildpackage (0.9.22) unstable; urgency=medium
 
   [ Jochen Sprickerhof ]
