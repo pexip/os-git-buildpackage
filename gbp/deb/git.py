@@ -318,6 +318,7 @@ class DebianGitRepository(PkgGitRepository):
                                                                            upstream_tree))
                 gbp.log.debug("Creating pristine tar commit '%s' from '%s'" % (source.path, subtree))
                 self.pristine_tar.commit(source.path, subtree, signaturefile=source.signaturefile, quiet=True)
+            gbp.log.debug("Creating pristine tar commit '%s' from '%s'" % (sources[0].path, main_tree))
             self.pristine_tar.commit(sources[0].path, main_tree, signaturefile=sources[0].signaturefile, quiet=True)
         except CommandExecFailed as e:
             raise GitRepositoryError(str(e))
