@@ -170,15 +170,6 @@ class ChangeLog(object):
         """The Debian part of the version number"""
         return self._cp['Debian-Version']
 
-    def has_upstream_version(self):
-        """
-        Whether the version has an upstream component
-
-        @return: C{True} if the version has an upstream component, C{False} otherwise
-        @rtype: C{bool}
-        """
-        return self._cp.has_key('Upstream-Version')
-
     @property
     def epoch(self):
         """The package's epoch"""

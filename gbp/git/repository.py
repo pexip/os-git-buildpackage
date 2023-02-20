@@ -1496,38 +1496,6 @@ class GitRepository(object):
             files = [files]
         self._commit(msg=msg, args=files, author_info=author_info)
 
-    @staticmethod
-    def _preserve_empty_dirs(root):
-        """
-        Ensure empty directories are preserved
-
-        @param root: root of tree to search
-        @type root: C{str}
-        """
-        def _find_empty(rootdir):
-            """
-            Search a directory tree for empty directories
-
-            @param rootdir: root of tree to search
-            @type rootdir: C{str}
-            @return: list of empty directories
-            @rtype: C{list} of C{str}
-            """
-            empty_dirs = []
-            if not os.listdir(rootdir):
-                empty_dirs.append(rootdir)
-            else:
-                for item in os.listdir(rootdir):
-                    itempath = os.path.join(rootdir, item)
-                    if os.path.isdir(itempath) and not os.path.islink(itempath):
-                        empty_dirs.extend(_find_empty(itempath))
-            return empty_dirs
-
-        for item in _find_empty(root):
-            ignorepath = os.path.join(item, '.gitignore')
-            with open(ignorepath, 'w'):
-                os.utime(ignorepath, None)
-
     def commit_dir(self, unpack_dir, msg, branch, other_parents=None,
                    author={}, committer={}, create_missing_branch=False):
         """
@@ -1556,7 +1524,6 @@ class GitRepository(object):
             os.unlink(git_index_file)
         except OSError:
             pass
-        self._preserve_empty_dirs(unpack_dir)
         self.add_files('.', force=True, index_file=git_index_file,
                        work_tree=unpack_dir)
         tree = self.write_tree(git_index_file)

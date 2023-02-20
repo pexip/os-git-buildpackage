@@ -521,8 +521,7 @@ def main(argv):
                 # the user want to switch to snapshot mode
                 add_section = True
 
-        has_upstream_tag = repo.has_upstream_tag(options.upstream_tag)
-        if add_section and not version_change and not source.is_native(has_upstream_tag):
+        if add_section and not version_change and not source.is_native():
             # Get version from upstream if none provided
             v = guess_version_from_upstream(repo, options.upstream_tag,
                                             options.upstream_branch, cp)

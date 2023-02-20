@@ -82,12 +82,12 @@ class DebianGitRepository(PkgGitRepository):
         @return: sha1 of the commit the tag references to
         @rtype: C{str}
         """
-        tag = self.version_to_tag(format, version, component)
+        tag = self.version_to_tag(format, version)
         legacy_tag = self._build_legacy_tag(format, version)
         if self.has_tag(tag):  # new tags are injective
             # dereference to a commit object
             return self.rev_parse("%s^0" % tag)
-        elif not component and self.has_tag(legacy_tag):
+        elif self.has_tag(legacy_tag):
             out, ret = self._git_getoutput('cat-file', args=['-p', legacy_tag])
             if ret:
                 return None
@@ -129,21 +129,6 @@ class DebianGitRepository(PkgGitRepository):
             version = "%s:%s" % (epoch, version)
         return version
 
-    def has_upstream_tag(self, upstream_tag_format, commit='HEAD'):
-        """
-        Whether the repo has any upstream tag
-
-        @return: C{True} if the repo has at least one upstream tag, C{False}
-            otherwise
-        @rtype: C{Bool}
-        """
-        pattern = upstream_tag_format % dict(version='*', component='')
-        try:
-            tag = self.find_tag(commit, pattern=pattern)
-        except GitRepositoryError:
-            return False
-        return True
-
     @staticmethod
     def _build_legacy_tag(format, version):
         """
@@ -155,7 +140,7 @@ class DebianGitRepository(PkgGitRepository):
         if ':' in version:  # strip of any epochs
             version = version.split(':', 1)[1]
         version = version.replace('~', '.')
-        return format % dict(version=version, component='')
+        return format % dict(version=version)
 
     @classmethod
     def version_to_tag(cls, format, version):
