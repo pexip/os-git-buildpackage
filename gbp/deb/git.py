@@ -292,7 +292,7 @@ class DebianGitRepository(PkgGitRepository):
                        tarball the other ones additional tarballs.
         """
         components = [t.component for t in sources[1:]]
-        main_tree = self.tree_drop_dirs(upstream_tree, components)
+        main_tree = upstream_tree
 
         try:
             for source in sources[1:]:
