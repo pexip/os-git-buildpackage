@@ -692,8 +692,10 @@ class GitRepository(object):
         if self.has_tag(tag):
             self._git_command("tag", ["-d", tag])
 
-    def move_tag(self, old, new):
-        self._git_command("tag", [new, old])
+    def move_tag(self, old, new, message=None):
+        if not message:
+            message = self.get_subject(old)
+        self._git_command("tag", ["-m", message, new, old])
         self.delete_tag(old)
 
     def has_tag(self, tag):

@@ -1,3 +1,9 @@
+git-buildpackage (0.9.22pexip4) pexip; urgency=medium
+
+  * git/repository/move_tag: add message arg, default to old message
+
+ -- Huw Jones <huw@pexip.com>  Tue, 14 Mar 2023 11:05:55 +0000
+
 git-buildpackage (0.9.22pexip3) pexip; urgency=medium
 
   * git/repository/create_tag: explicitly don't sign when sign=False
