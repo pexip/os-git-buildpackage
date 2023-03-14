@@ -26,6 +26,7 @@ import pipes
 import time
 import gbp.command_wrappers as gbpc
 from gbp.deb.dscfile import DscFile
+from gbp.deb.source import DebianSource
 from gbp.deb.upstreamsource import (DebianUpstreamSource,
                                     DebianAdditionalTarball)
 from gbp.deb.git import (DebianGitRepository, GitRepositoryError)
@@ -530,8 +531,10 @@ def main(argv):
             else:
                 gbp.log.warn("Didn't find a diff to apply.")
 
-            if imported and options.pristine_tar:
-                repo.create_pristine_tar_commits(commit, sources)
+            if (imported or options.allow_same_version) and options.pristine_tar:
+                pt_commit, _ = repo.get_pristine_tar_commit(DebianSource("."))
+                if not pt_commit:
+                    repo.create_pristine_tar_commits(commit, sources)
         if repo.get_branch() == options.debian_branch or repo.empty:
             # Update HEAD if we modified the checked out branch
             repo.force_head(options.debian_branch, hard=True)

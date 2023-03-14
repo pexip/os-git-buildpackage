@@ -1,6 +1,8 @@
 git-buildpackage (0.9.22pexip4) pexip; urgency=medium
 
   * git/repository/move_tag: add message arg, default to old message
+  * import-dsc: create pristine tar commit if allow-same-version and
+    pristine tar commit does not exist for the dsc version
 
  -- Huw Jones <huw@pexip.com>  Tue, 14 Mar 2023 11:05:55 +0000
 
