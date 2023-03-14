@@ -531,9 +531,11 @@ def main(argv):
             else:
                 gbp.log.warn("Didn't find a diff to apply.")
 
-            if (imported or options.allow_same_version) and options.pristine_tar:
-                pt_commit, _ = repo.get_pristine_tar_commit(DebianSource("."))
-                if not pt_commit:
+            if options.pristine_tar:
+                if not imported and options.allow_same_version:
+                    pt_commit, _ = repo.get_pristine_tar_commit(DebianSource("."))
+                    imported = not pt_commit
+                if imported:
                     repo.create_pristine_tar_commits(commit, sources)
         if repo.get_branch() == options.debian_branch or repo.empty:
             # Update HEAD if we modified the checked out branch
