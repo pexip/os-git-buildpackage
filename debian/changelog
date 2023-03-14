@@ -1,3 +1,9 @@
+git-buildpackage (0.9.22pexip3) pexip; urgency=medium
+
+  * git/repository/create_tag: explicitly don't sign when sign=False
+
+ -- Huw Jones <huw@pexip.com>  Tue, 14 Mar 2023 10:28:38 +0000
+
 git-buildpackage (0.9.22pexip2) pexip; urgency=low
 
   * Fix import-dsc for multi-component sources
