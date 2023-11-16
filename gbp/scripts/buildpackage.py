@@ -212,7 +212,7 @@ def get_pbuilder_dist(options, repo, native=False):
         if len(parts) == 2:  # e.g. debian/stretch
             suite = parts[1]
             if vendor == parts[0]:
-                dist = '' if suite in ['sid', 'master'] else suite
+                dist = '' if suite in ['sid', 'master', 'main', 'latest'] else suite
             else:
                 dist = '%s_%s' % (parts[0], suite)
         # Branches in Debian often omit the debian/ prefix
@@ -328,10 +328,11 @@ def check_branch(repo, options):
     branch = None
     try:
         branch = repo.get_branch()
-    except GitRepositoryError:
+    except GitRepositoryError as repo_error:
         # Not being on any branch is o.k. with --git-ignore-branch
         if not options.ignore_branch:
-            raise
+            gbp.log.err(repo_error)
+            raise GitRepositoryError("Use --git-ignore-branch to ignore")
 
     ignore = options.ignore_new or options.ignore_branch
     if branch != options.debian_branch and not ignore:

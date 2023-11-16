@@ -39,6 +39,12 @@ file:///usr/share/doc/git-buildpackage/manual-html/gbp.import.html#GBP.IMPORT.CO
 on howto create it otherwise use --upstream-branch to specify it.
 """
 
+no_debian_branch_msg = """
+Repository does not have branch '%s' for packaging sources. If there is none see
+file:///usr/share/doc/git-buildpackage/manual-html/gbp.import.html#GBP.IMPORT.CONVERT
+on howto create it otherwise use --debian-branch to specify it.
+"""
+
 
 def expand_path(option, opt, value):
     value = os.path.expandvars(value)
@@ -102,6 +108,8 @@ class GbpOptionParser(OptionParser):
     @type def_config_files: dict (type, path)
     """
     defaults = {'abbrev': 7,
+                'add-upstream-vcs': 'False',
+                'aliases': 'True',
                 'allow-unauthenticated': 'False',
                 'arch': '',
                 'author-date-is-committer-date': 'False',
@@ -121,6 +129,7 @@ class GbpOptionParser(OptionParser):
                 'debian-branch': 'master',
                 'debian-tag': 'debian/%(version)s',
                 'debian-tag-msg': '%(pkg)s Debian release %(version)s',
+                'defuse-gitattributes': 'auto',
                 'dist': 'sid',
                 'drop': 'False',
                 'export': 'HEAD',
@@ -193,6 +202,12 @@ class GbpOptionParser(OptionParser):
                 'urgency': 'medium',
                 }
     help = {
+        'add-upstream-vcs':
+            "Whether to add the upstream vcs as additional remote "
+            "default is '%(add-upstream-vcs)s'",
+        'aliases':
+            "Whether to expand gbp specific aliases like `salsa:`,"
+            "default is '%(aliases)s'",
         'debian-branch':
             "Branch the Debian package is being developed on, "
             "default is '%(debian-branch)s'",
@@ -227,7 +242,7 @@ class GbpOptionParser(OptionParser):
             "Use pristine-tar to create orig tarball, "
             "default is '%(pristine-tar)s'",
         'pristine-tar-commit':
-            "When generating a tarball commit it to the pristine-tar branch '%(pristine-tar-commit)s' "
+            "When generating a tarball, commit it to the pristine-tar branch '%(pristine-tar-commit)s' "
             "default is '%(pristine-tar-commit)s'",
         'filter-pristine-tar':
             "Filter pristine-tar when filter option is used, default is '%(filter-pristine-tar)s'",
@@ -325,7 +340,7 @@ class GbpOptionParser(OptionParser):
             "default is '%(postimport)s'",
         'postunpack':
             "hook run after a unpacking the tarballs, "
-            "default is '%(postimport)s'",
+            "default is '%(postunpack)s'",
         'hooks':
             "Enable running all hooks, default is %(hooks)s",
         'upstream-signatures':
@@ -580,7 +595,7 @@ class GbpOptionParser(OptionParser):
         self.prefix = prefix
         self.config = {}
         self.valid_options = []
-        self.config_parser = configparser.SafeConfigParser()
+        self.config_parser = configparser.ConfigParser()
         self._warned_old_gbp_conf = False
 
         try:

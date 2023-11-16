@@ -653,6 +653,16 @@ class GitRepository(object):
 
         return out[0].decode().strip()
 
+    @staticmethod
+    def ensure_refs_heads(branch):
+        """
+        Make sure a branch name is prefixed with `refs/heads'
+        """
+        if (branch.startswith('refs/heads/')):
+            return branch
+        #return f'refs/heads/{branch}'
+        return f'{branch}'
+
 #{ Tags
 
     def create_tag(self, name, msg=None, commit=None, sign=False, keyid=None):
@@ -1073,20 +1083,24 @@ class GitRepository(object):
             raise GitRepositoryError("Not a Git repository object: '%s'" % obj)
         return out[0].decode().strip()
 
-    def list_tree(self, treeish, recurse=False, paths=None):
+    def list_tree(self, treeish, recurse=False, paths=None, sizes=False):
         """
-        Get a trees content. It returns a list of objects that match the
-        'ls-tree' output: [mode, type, sha1, path].
+        Get a trees content. It yields tuples that match the
+        'ls-tree' output: (mode, type, sha1, path). When sizes is True,
+        includes object sizes: (mode, type, sha1, size, path)
 
         @param treeish: the treeish object to list
         @type treeish: C{str}
         @param recurse: whether to list the tree recursively
+        @type recurse: C{bool}
+        @param sizes: whether to include object sizes
         @type recurse: C{bool}
         @return: the tree
         @rtype: C{list} of objects. See above.
         """
         args = GitArgs('-z')
         args.add_true(recurse, '-r')
+        args.add_true(sizes, '-l')
         args.add(treeish)
         args.add("--")
         args.add_cond(paths, paths)
@@ -1095,15 +1109,19 @@ class GitRepository(object):
         if ret:
             raise GitRepositoryError("Failed to ls-tree '%s': '%s'" % (treeish, err.decode().strip()))
 
-        tree = []
         for line in out.split(b'\0'):
             if line:
-                parts = line.split(None, 3)
+                parts = line.split(None, 4 if sizes else 3)
                 # decode everything but the file name
-                for i in range(len(parts) - 1):
-                    parts[i] = parts[i].decode()
-                tree.append(parts)
-        return tree
+                filename = parts.pop()
+                if sizes:
+                    mode, type, sha1, size = (part.decode() for part in parts)
+                    # Git submodules report '-' instead of a size
+                    size = size if size != '-' else 0
+                    yield mode, type, sha1, int(size), filename
+                else:
+                    mode, type, sha1 = (part.decode() for part in parts)
+                    yield mode, type, sha1, filename
 
 #}
 
@@ -1117,7 +1135,7 @@ class GitRepository(object):
         """
         value, ret = self._git_getoutput('config', [name])
         if ret:
-            raise KeyError("'%s' not found in git config")
+            raise KeyError("'%s' not found in git config" % name)
         return value[0].decode()[:-1]  # first line with \n ending removed
 
     def set_config(self, name, value):
@@ -1543,7 +1561,12 @@ class GitRepository(object):
                     raise
         else:  # empty repo
             cur = None
-            branch = 'master'
+            out, _, ret = self._git_inout('symbolic-ref', ['HEAD'],
+                                          capture_stderr=True)
+            if ret:
+                raise GitRepositoryError("Currently not on a branch")
+            ref = out.decode().split('\n')[0]
+            branch = ref[len('/refs/heads'):]
 
         # Build list of parents:
         parents = []
@@ -1659,6 +1682,7 @@ class GitRepository(object):
         @type since: C{str}
         """
         args = GitArgs('--pretty=format:%H')
+        args.add("--no-show-signature")
         args.add_false(merges, '--no-merges')
         args.add('--grep=%s' % regex)
         args.add_true(since, since)
@@ -1974,8 +1998,9 @@ class GitRepository(object):
             # A submodules is shown as "commit" object in ls-tree:
             if objtype == "commit":
                 nextpath = os.path.join(path, name)
-                submodules.append((nextpath.replace(self.path, '').lstrip('/'),
-                                   commit))
+                if nextpath.startswith(self.path):
+                    nextpath = nextpath[len(self.path):].lstrip('/')
+                submodules.append((nextpath, commit))
                 if recursive:
                     submodules += self.get_submodules(commit, path=nextpath,
                                                       recursive=recursive)

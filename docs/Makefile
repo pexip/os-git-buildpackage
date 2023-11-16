@@ -16,6 +16,7 @@ MAN1S = \
         gbp-pristine-tar  \
         gbp-pull          \
         gbp-push          \
+        gbp-setup-gitattributes \
         gbp-tag           \
         gbp-buildpackage-rpm \
         gbp-import-srpm   \
@@ -39,11 +40,22 @@ MAN_DATE=$(shell dpkg-parsechangelog -l ../debian/changelog -SDate | TZ=UTC LC_A
 IMAGES=$(wildcard images/*png)
 DEST_IMAGES=$(subst images/,$(MANUAL)/images/,$(IMAGES))
 
-# Select docbook-to-man tool
-ifeq ($(shell which docbook2x-man), )
-	DOCBOOK_TO_MAN=docbook-to-man
+# Select python
+ifneq ($(strip $(shell which python3)),)
+	PYTHON=python3
 else
+	PYTHON=python
+endif
+
+# Select docbook-to-man tool
+ifneq ($(strip $(shell which docbook2x-man)),)
 	DOCBOOK_TO_MAN=docbook2x-man
+else ifneq ($(strip $(shell which docbook-to-man)),)
+	DOCBOOK_TO_MAN=docbook-to-man
+else ifneq ($(strip $(shell which docbook2man)),)
+	DOCBOOK_TO_MAN=docbook2man
+else
+	$(error Unable to find usable docbook to man conversion tool)
 endif
 
 all: manual $(MANPAGES)
@@ -78,7 +90,7 @@ git-pbuilder.1: ../bin/git-pbuilder
 manual.xml: $(VERSION_ENT)
 
 $(GBP_VERSION): ../debian/changelog
-	cd .. && python setup.py build --help >/dev/null
+	cd .. && $(PYTHON) setup.py build --help >/dev/null
 
 $(VERSION_ENT): $(GBP_VERSION)
 	echo '<!ENTITY gbp-version "$(DEB_VERSION)">' > $(VERSION_ENT)
@@ -86,3 +98,10 @@ $(VERSION_ENT): $(GBP_VERSION)
 clean:
 	-rm -r $(MANUAL)
 	-rm *.1 *.5 $(VERSION_ENT)
+
+po4a:
+	po4a -v -f po/po4a.cfg
+
+langs: po4a
+	$(MAKE) -C _gen/de -f ../../Makefile.lang
+
