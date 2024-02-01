@@ -1,3 +1,9 @@
+git-buildpackage (0.9.30+pexip24u2) pexip-bookworm; urgency=medium
+
+  * New versioning scheme
+
+ -- Mark Hymers <mark.hymers@pexip.com>  Thu, 01 Feb 2024 15:58:58 +0000
+
 git-buildpackage (0.9.30pexip1) pexip-bookworm; urgency=medium
 
   * Initial bookworm build
