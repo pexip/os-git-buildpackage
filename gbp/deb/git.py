@@ -291,7 +291,7 @@ class DebianGitRepository(PkgGitRepository):
         @param soures: C{list} of tarball as I{UpstreamSource}. First one being the main
                        tarball the other ones additional tarballs.
         """
-        components = [t.component for t in sources[1:]]
+        # components = [t.component for t in sources[1:]]
         main_tree = upstream_tree
 
         try:

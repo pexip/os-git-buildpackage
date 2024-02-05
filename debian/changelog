@@ -1,3 +1,9 @@
+git-buildpackage (0.9.30+pexip24u3) pexip-bookworm; urgency=medium
+
+  * Fix flake8 error caused by our patches.
+
+ -- Mark Hymers <mark.hymers@pexip.com>  Mon, 05 Feb 2024 09:27:42 +0000
+
 git-buildpackage (0.9.30+pexip24u2) pexip-bookworm; urgency=medium
 
   * New versioning scheme
