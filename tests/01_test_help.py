@@ -28,7 +28,7 @@ class TestHelp(TestCaseWithData):
                 'rpm_ch',
                 'pq_rpm']
 
-    @TestCaseWithData.feed(deb_cmds + rpm_cmds)
+    @TestCaseWithData.feed(deb_cmds)
     def testHelp(self, script):
         module = 'gbp.scripts.%s' % script
         m = __import__(module, globals(), locals(), ['main'], 0)

@@ -1,6 +1,8 @@
 git-buildpackage (0.9.30+pexip24u3) pexip-bookworm; urgency=medium
 
   * Fix flake8 error caused by our patches.
+  * "Patch out" RPM support from gbp to avoid needing to fix up
+    libfsverity for openssl 3 API issues.
 
  -- Mark Hymers <mark.hymers@pexip.com>  Mon, 05 Feb 2024 09:27:42 +0000
 

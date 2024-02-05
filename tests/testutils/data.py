@@ -30,6 +30,7 @@ class TestCaseWithData(unittest.TestCase):
                     try:
                         fn(self, *((d,) + args))
                     except self.failureException as e:
+                        print("XXXXXXXXXX: ", e)
                         raise self.failureException(e.message + " with data %s" % repr(d))
             return feed_item
         return wrapper
