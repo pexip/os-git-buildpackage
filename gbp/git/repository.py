@@ -24,7 +24,6 @@ from collections import defaultdict
 
 import gbp.log as log
 from gbp.errors import GbpError
-from gbp.format import format_b
 from gbp.git.modifier import GitModifier
 from gbp.git.commit import GitCommit
 from gbp.git.errors import GitError
@@ -637,7 +636,7 @@ class GitRepository(object):
         """
         Get upstream branch for the local branch
 
-        @param local_branch: name fo the local branch
+        @param local_branch: name of the local branch
         @type local_branch: C{str}
         @return: upstream (remote/branch) or  '' if no upstream found
         @rtype: C{str}
@@ -686,6 +685,8 @@ class GitRepository(object):
         if sign:
             args += ['-s']
             args += ['-u', keyid] if keyid else []
+        else:
+            args += ['--no-sign']
         args += [name]
         args += [commit] if commit else []
         self._git_command("tag", args)
@@ -864,7 +865,7 @@ class GitRepository(object):
             checking the repository status
         @type ignore_untracked: C{bool}
         @param paths: only check changes on paths
-        @type paths: C{list} of C{stings}
+        @type paths: C{list} of C{strings}
         @return: C{True} if the repository is clean, C{False} otherwise
             and Git's status message
         @rtype: C{tuple}
@@ -1055,7 +1056,7 @@ class GitRepository(object):
 
         for mode, type_, sha1, name in contents:
             name = to_bin(name)
-            objs += format_b(b'%s %s %s\t%s\0', mode.encode(), type_.encode(), sha1.encode(), name)
+            objs += b'%s %s %s\t%s\0' % (mode.encode(), type_.encode(), sha1.encode(), name)
 
         sha1, err, ret = self._git_inout('mktree',
                                          args.args,
@@ -1466,7 +1467,7 @@ class GitRepository(object):
             raise GbpError("Failed to move '%s' to '%s': %s" % (old, new, stderr.decode().rstrip()))
 #}
 
-#{ Comitting
+#{ Committing
 
     def _commit(self, msg, args=[], author_info=None):
         extra_env = author_info.get_author_env() if author_info else None
@@ -1670,7 +1671,7 @@ class GitRepository(object):
 
     def grep_log(self, regex, since=None, merges=True):
         """
-        Get commmits matching I{regex}
+        Get commits matching I{regex}
 
         @param regex: regular expression
         @type regex: C{str}
@@ -1834,6 +1835,7 @@ class GitRepository(object):
             options.add('--', paths)
         if abbrev is not None:
             config_args.add('core.abbrev=%d' % abbrev)
+        config_args.add('diff.noprefix=false')
         output, stderr, ret = self._git_inout('diff',
                                               options.args,
                                               config_args=config_args.args)

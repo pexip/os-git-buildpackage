@@ -23,8 +23,6 @@ from tests.component import (ComponentTestBase,
                              skipUnless)
 from tests.component.deb.fixtures import RepoFixtures
 
-from nose.tools import ok_
-
 from gbp.scripts.clone import main as clone
 
 
@@ -34,14 +32,15 @@ class TestClone(ComponentTestBase):
     @RepoFixtures.native()
     def test_clone_nonempty(self, repo):
         """Test that cloning into an existing dir fails"""
-        os.chdir('..')
-        ok_(clone(['arg0', repo.path]) == 1,
-            "Cloning did no fail as expected")
-        self._check_log(-2,
-                        "gbp:error: Git command failed: Error "
-                        "running git clone: fatal: destination path "
-                        "'git-buildpackage' already exists and is not "
-                        "an empty directory.")
+        os.chdir("..")
+        assert clone(["arg0", repo.path]) == 1, "Cloning did no fail as expected"
+        self._check_log(
+            -2,
+            "gbp:error: Git command failed: Error "
+            "running git clone: fatal: destination path "
+            "'git-buildpackage' already exists and is not "
+            "an empty directory.",
+        )
 
     @RepoFixtures.native()
     def test_clone_native(self, repo):
@@ -61,8 +60,7 @@ class TestClone(ComponentTestBase):
         """Test that cloning from vcs-git urls works"""
         dest = os.path.join(self._tmpdir,
                             'cloned_repo')
-        ret = clone(['arg0', "--add-upstream-vcs", "vcsgit:libvirt-glib", dest])
-        self.assertEquals(ret, 0)
+        self._check_success(clone(['arg0', "--add-upstream-vcs", "vcsgit:libvirt-glib", dest]))
         cloned = ComponentTestGitRepository(dest)
         self._check_repo_state(cloned, 'debian/sid', ['debian/sid', 'upstream/latest'])
         assert cloned.has_remote_repo("upstreamvcs")
@@ -72,7 +70,7 @@ class TestClone(ComponentTestBase):
     def test_clone_vcsgit_fail(self):
         """Test that cloning from vcs-git urls fails as expected"""
         ret = clone(['arg0', "vcsgit:doesnotexist"])
-        self.assertEquals(ret, 1)
+        self.assertEqual(ret, 1)
         self._check_log(-1, "gbp:error: Can't find any vcs-git URL for 'doesnotexist'")
 
     @skipUnless(os.getenv("GBP_NETWORK_TESTS"), "network tests disabled")
@@ -80,8 +78,7 @@ class TestClone(ComponentTestBase):
         """Test that cloning from github urls works"""
         dest = os.path.join(self._tmpdir,
                             'cloned_repo')
-        ret = clone(['arg0', "github:agx/git-buildpackage", dest])
-        self.assertEquals(ret, 0)
+        self._check_success(clone(['arg0', "github:agx/git-buildpackage", dest]))
         cloned = ComponentTestGitRepository(dest)
         self._check_repo_state(cloned, 'master', ['master'])
 
@@ -90,8 +87,7 @@ class TestClone(ComponentTestBase):
         """Test that cloning a repo without harmful attrs does nothing"""
         dest = os.path.join(self._tmpdir,
                             'cloned_repo')
-        clone(['arg0',
-               repo.path, dest])
+        self._check_success(clone(['arg0', repo.path, dest]))
         cloned = ComponentTestGitRepository(dest)
         self._check_repo_state(cloned, 'master', ['master'])
 
@@ -102,9 +98,13 @@ class TestClone(ComponentTestBase):
 
     @RepoFixtures.native()
     def test_clone_with_attrs(self, repo):
-        """Test that cloning a repo with harmful attrs disarms them"""
+        """Test that cloning a repo with harmful attrs disarms them and avoids line ending conversion"""
+        with open('test.csv', 'wb') as f:
+            f.write(b'line1\nline2\n')
+        repo.add_files('test.csv')
+        repo.commit_files('test.csv', msg="add test.csv")
         with open('.gitattributes', 'w') as f:
-            f.write('# not empty')
+            f.write('*.csv text eol=crlf')
         repo.add_files('.gitattributes')
         repo.commit_files('.gitattributes', msg="add .gitattributes")
 
@@ -116,7 +116,7 @@ class TestClone(ComponentTestBase):
         self._check_repo_state(cloned, 'master', ['master'])
 
         attrs_file = os.path.join(dest, '.git', 'info', 'attributes')
-        ok_(os.path.exists(attrs_file), "%s is missing" % attrs_file)
+        assert os.path.exists(attrs_file), "%s is missing" % attrs_file
 
         with open(attrs_file) as f:
             attrs = sorted(f.read().splitlines())
@@ -128,4 +128,10 @@ class TestClone(ComponentTestBase):
             '* dgit-defuse-attrs',
             '[attr]dgit-defuse-attrs  -text -eol -crlf -ident -filter -working-tree-encoding',
         ]
-        self.assertEquals(attrs, expected_gitattrs)
+        self.assertEqual(attrs, expected_gitattrs)
+
+        test_file = os.path.join(dest, 'test.csv')
+        with open(test_file, 'rb') as f:
+            test_contents = f.read()
+        expected_test_contents = b'line1\nline2\n'
+        self.assertEqual(test_contents, expected_test_contents)

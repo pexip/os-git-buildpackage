@@ -2,7 +2,7 @@
 
 """Test L{gbp.deb}"""
 
-from . import context  # noqa: 401
+from . import context  # noqa: F401
 from . import testutils
 
 import unittest
@@ -41,4 +41,4 @@ gpgv:                 aka "Richard W.M. Jones <rich@annexia.org>"
         uscan = Uscan()
         self.assertTrue(uscan.scan())
         self.assertFalse(uscan.uptodate)
-        self.assertEquals(uscan.tarball, '../virt-what_1.18.orig.tar.gz')
+        self.assertEqual(uscan.tarball, '../virt-what_1.18.orig.tar.gz')

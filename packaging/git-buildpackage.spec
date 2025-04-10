@@ -9,7 +9,7 @@
 
 Name:       git-buildpackage
 Summary:    Build packages from git
-Version:    0.9.30
+Version:    0.9.38
 Release:    0
 Group:      Development/Tools/Building
 License:    GPLv2
@@ -83,7 +83,8 @@ BuildRequires:  perl-podlators
 %if 0%{?do_unittests}
 BuildRequires:  python3-coverage
 BuildRequires:  python3-mock
-BuildRequires:  python3-nose
+BuildRequires:  python3-pytest
+BuildRequires:  python3-pycov
 BuildRequires:  git-core
 BuildRequires:  %{man_pkg_name}
 BuildRequires:  %{dpkg_pkg_name}
@@ -161,7 +162,7 @@ Debian and the RPM tool set.
 
 
 %build
-WITHOUT_NOSETESTS=1 %{__python3} ./setup.py build
+WITHOUT_PYTESTS=1 %{__python3} ./setup.py build
 
 %if %{with docs}
 # HTML docs
@@ -174,18 +175,18 @@ HAVE_SGML2X=0 make -C docs/
 GIT_CEILING_DIRECTORIES=%{_builddir} \
     GIT_AUTHOR_EMAIL=rpmbuild@example.com GIT_AUTHOR_NAME=rpmbuild \
     GIT_COMMITTER_NAME=$GIT_AUTHOR_NAME GIT_COMMITTER_EMAIL=$GIT_AUTHOR_EMAIL \
-    %{__python3} setup.py nosetests
+    pytest
 %endif
 
 
 %install
 rm -rf %{buildroot}
-DEB_PYTHON_INSTALL_LAYOUT=deb_system WITHOUT_NOSETESTS=1 %{__python3} ./setup.py install --root=%{buildroot} --prefix=/usr --install-lib=%{python_sitelib}
+DEB_PYTHON_INSTALL_LAYOUT=deb_system WITHOUT_PYTESTS=1 %{__python3} ./setup.py install --root=%{buildroot} --prefix=/usr --install-lib=%{python_sitelib}
 find %{buildroot} -name __pycache__ | xargs -r rm -r
 mkdir -p %{buildroot}/usr/share/%{name}
 mv %{buildroot}/usr/bin/gbp-builder-mock %{buildroot}/usr/share/%{name}/
 mkdir -p %{buildroot}/%{_sysconfdir}/git-buildpackage/
-mv %{buildroot}/usr/share/%{name}/gbp.conf %{buildroot}/%{_sysconfdir}/git-buildpackage/
+mv %{buildroot}/usr/share/git_buildpackage/gbp.conf %{buildroot}/%{_sysconfdir}/git-buildpackage/
 
 %if %{with docs}
 # Install man pages

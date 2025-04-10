@@ -13,7 +13,7 @@
   </refmeta>
   <refnamediv>
     <refname>gbp-buildpackage</refname>
-    <refpurpose>Build &debian; packages from a &git; repository</refpurpose>
+    <refpurpose>Build &debian; source and binary packages from a &git; repository</refpurpose>
   </refnamediv>
   <refsynopsisdiv>
     <cmdsynopsis>
@@ -70,7 +70,9 @@
     <title>DESCRIPTION</title>
     <para>
       &gbp-buildpackage; is used to build &debian; source and .deb packages from
-      a &git; repository.
+      a &git; repository. For a complete description of concepts, git repository
+      layout and recommended workflows, see the online manual at
+      https://gbp.sigxcpu.org/manual/
     </para>
     <para>
       &gbp-buildpackage; will, in order:
@@ -386,14 +388,16 @@
               via <option>--git-pbuilder</option>, <option>--git-qemubuilder</option>
               or the corresponding configuration file options).  If
               unset build for the unstable distribution. The special
-              value <symbol>DEP14</symbol> will set the distribution to
+              value <symbol>DEP-14</symbol> will set the distribution to
               build for from the branch name. I.e. if you're starting
               the build from a branch named
               <replaceable>debian/wheezy-backports</replaceable> the
               distribution is set
-              to <replaceable>wheezy-backports</replaceable>. If the
-              branch is named <replaceable>downstream/sid</replaceable>
-              the distribution is set
+              to <replaceable>wheezy-backports</replaceable> or if the branch is
+              named <replaceable>debian/12-bookworm</replaceable> the
+              distribution is set to <replaceable>bookworm</replaceable> (the
+              numeric prefix is stripped). If the branch is named
+              <replaceable>downstream/sid</replaceable> the distribution is set
               to <replaceable>downstream_sid</replaceable>.
             </para>
           </listitem>
@@ -802,6 +806,22 @@
   <refsect1>
     <title>EXAMPLES</title>
     <para>
+      Build a package without passing any arguments, simply using package
+      specific options from <emphasis>debian/gbp.conf</emphasis> and user
+      scpecific options from <emphasis>~/.gbp.conf</emphasis> (if any). By
+      default will run <command>debuild</command> in current
+      directory:
+    </para>
+    <screen>
+      gbp buildpackage
+    </screen>
+    <para>
+      Build a source-only package that can be signed and uploaded to &debian;:
+    </para>
+    <screen>
+      gbp buildpackage -S -d
+    </screen>
+    <para>
       Build a &debian; package using &git-pbuilder; which in turn invokes
       &cowbuildercmd;.  Instruct cowbuilder to build within a Wheezy chroot for
       i386.
@@ -828,12 +848,12 @@
     <para>
       All options in the config files must be specified without the 'git-'
       prefix. So
-      e.g. <option>--git-debian-branch</option>=<replaceable>debian/sid</replaceable>
+      e.g. <option>--git-debian-branch</option>=<replaceable>debian/latest</replaceable>
       becomes in &gbp.conf;:
     </para>
     <programlisting>
       [buildpackage]
-      debian-branch = debian/sid
+      debian-branch = debian/latest
     </programlisting>
   </refsect1>
   <refsect1>

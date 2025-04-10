@@ -155,7 +155,7 @@ class GbpOptionParser(OptionParser):
                 'meta-closes': 'Closes|LP',
                 'meta-closes-bugnum': r'(?:bug|issue)?\#?\s?\d+',
                 'multimaint': 'True',
-                'multimaint-merge': 'False',
+                'multimaint-merge': 'True',
                 'no-create-orig': 'False',
                 'notify': 'auto',
                 'overlay': 'False',
@@ -382,7 +382,7 @@ class GbpOptionParser(OptionParser):
         'component':
             'component name for additional tarballs',
         'bare':
-            "wether to create a bare repository on the remote side. "
+            "whether to create a bare repository on the remote side. "
             "'Default is '%(bare)s'.",
         'urgency':
             "Set urgency level, default is '%(urgency)s'",
@@ -600,7 +600,9 @@ class GbpOptionParser(OptionParser):
 
         try:
             self.parse_config_files()
-        except configparser.ParsingError as err:
+        except (configparser.ParsingError,
+                configparser.DuplicateOptionError,
+                configparser.DuplicateSectionError) as err:
             raise GbpError(str(err) + "\nSee 'man gbp.conf' for the format.")
 
         OptionParser.__init__(self, option_class=GbpOption,

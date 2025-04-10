@@ -1,3 +1,10 @@
+git-buildpackage (0.9.38) unstable; urgency=medium
+
+  Starting from this version the option 'multimaint-merge' is enabled by
+  default.
+
+ -- Otto Kekäläinen <otto@debian.org>  Tue, 14 Jan 2025 21:32:38 -0800
+
 git-buildpackage (0.8.14) experimental; urgency=medium
 
   gbp import-orig's --merge-mode option now defaults to 'auto' selecting
@@ -47,7 +54,7 @@ git-buildpackage (0.4.61) unstable; urgency=low
 
 git-buildpackage (0.4.57) unstable; urgency=low
 
-  git-import-orig dosn't generate changelog entries by default anymore. This
+  git-import-orig doesn't generate changelog entries by default anymore. This
   means you can safely remove --no-dch from all your scripts and config files.
 
   If you want git-import-orig to behave as before add:

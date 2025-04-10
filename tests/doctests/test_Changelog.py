@@ -3,10 +3,10 @@
 """
 Test L{gbp.deb.changelog.ChangeLog}
 """
-from .. import context  # noqa: 401
+from .. import context  # noqa: F401
 from .. testutils import have_cmd
 
-import nose
+import pytest
 
 cl_debian = """git-buildpackage (0.5.32) unstable; urgency=low
 
@@ -50,7 +50,7 @@ cl_epoch = """xserver-xorg-video-nv (1:1.2.0-3) unstable; urgency=low
 def setup():
     """Setup test module"""
     if not have_cmd('debchange'):
-        raise nose.SkipTest('debchange tool not present')
+        pytest.skip('debchange tool not present')
 
 
 def test_parse_debian_only():
@@ -240,10 +240,10 @@ def test_get_changes():
     19
     >>> len(cl.get_changes('0.5.31').split('\\n'))
     7
-    >>> cl['Changes'].split('\\n')[0]
-    ' git-buildpackage (0.5.32) unstable; urgency=low'
-    >>> len(cl['Changes'])
-    187
+    >>> cl['Changes'].split('\\n')[0].strip()
+    'git-buildpackage (0.5.32) unstable; urgency=low'
+    >>> len(cl['Changes'].strip())
+    186
     """
 
 

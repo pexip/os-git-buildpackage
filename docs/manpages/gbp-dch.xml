@@ -14,7 +14,7 @@
   </refmeta>
   <refnamediv>
     <refname>gbp-dch</refname>
-    <refpurpose>Generate the &debian; changelog from git commit messages</refpurpose>
+    <refpurpose>Generate the <filename>debian/changelog</filename> from &git; commit history</refpurpose>
   </refnamediv>
   <refsynopsisdiv>
     <cmdsynopsis>
@@ -26,8 +26,8 @@
       <arg><option>--upstream-tag=</option><replaceable>tag-format</replaceable></arg>
       <arg><option>--ignore-branch</option></arg>
       <group>
-	<arg><option>-s</option> <replaceable>commitish</replaceable></arg>
-        <arg><option>--since=</option><replaceable>commitish</replaceable></arg>
+	<arg><option>-s</option> <replaceable>commit-ish</replaceable></arg>
+        <arg><option>--since=</option><replaceable>commit-ish</replaceable></arg>
       </group>
       <group>
 	<group>
@@ -96,7 +96,7 @@
       <listitem><para>The start commit is read from the snapshot banner (see below for
       details)</para></listitem>
       <listitem><para>If the topmost version of the
-      <filename>debian/changelog</filename> is alread tagged. Use the commit
+      <filename>debian/changelog</filename> is already tagged. Use the commit
       the tag points to as start commit.</para></listitem>
       <listitem><para>The last commit that modified <filename>debian/changelog</filename> is
       used as start commit.</para></listitem>
@@ -112,7 +112,7 @@
       created.
     </para>
     <para>
-      If one ore more paths are given as arguments &gbp-dch; will only
+      If one or more paths are given as arguments &gbp-dch; will only
       include changes in <filename>debian/changelog</filename> that
       affect these paths.  E.g. using
       <emphasis>debian/</emphasis> is a good choice if upstream uses
@@ -200,12 +200,12 @@
         </listitem>
       </varlistentry>
       <varlistentry>
-        <term><option>--since=</option><replaceable>committish</replaceable>
+        <term><option>--since=</option><replaceable>commit-ish</replaceable>
         </term>
         <listitem>
           <para>
             Start reading commit messages at
-            <replaceable>committish</replaceable>.
+            <replaceable>commit-ish</replaceable>.
             This option can't be set via &gbp.conf;.
           </para>
         </listitem>
@@ -469,9 +469,8 @@
         <term><option>--[no-]multimaint-merge</option>
         </term>
         <listitem>
-          <para>
-          Merge commits by maintainer.
-          </para>
+          <para>This option is passed verbatim to dch(1) and is enabled by
+          default.</para>
         </listitem>
       </varlistentry>
       <varlistentry>
@@ -637,6 +636,26 @@
     <screen>
       * Document meta tags.
         Thanks to Raphaël Hertzog for the suggestion (Closes: #636088)</screen>
+  </refsect1>
+  <refsect1>
+    <title>EXAMPLES</title>
+    <para>
+    Update the latest <filename>debian/changelog</filename> so package is ready
+    for release, and commit the change. A editor will be spawned so the entry
+    can be reviewed and manually refined easily.
+    </para>
+    <screen>
+       gbp dch --release --commit</screen>
+    <para>
+      Right after running <command>git import-orig --uscan</command>, create a
+      new <filename>debian/changelog</filename> entry for UNRELEASED, and include
+      only commits that modified something in the <filename>debian/</filename>
+      subdirectory so all upstream commits are ignored:
+    </para>
+    <screen>
+      gbp dch --distribution=UNRELEASED \
+      --commit --commit-msg="Update changelog after new upstream version import" \
+      -- debian</screen>
   </refsect1>
   <refsect1>
     &man.gbp.config-files;

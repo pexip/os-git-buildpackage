@@ -33,6 +33,8 @@ class DebianGitRepository(PkgGitRepository):
     """A git repository that holds the source of a Debian package"""
 
     version_mangle_re = PkgPolicy.version_mangle_re
+    # Extensions to strip from version numbers
+    splitexts = ['repack', 'py', 'dfsg', 'ds']
 
     def __init__(self, *args, **kwargs):
         super(DebianGitRepository, self).__init__(*args, **kwargs)
@@ -129,6 +131,63 @@ class DebianGitRepository(PkgGitRepository):
             version = "%s:%s" % (epoch, version)
         return version
 
+    @classmethod
+    def _upstream_version_from_debian_upstream(cls, version):
+        """
+        Convert a Debian upstream version to an upstream version.
+        >>> DebianGitRepository._upstream_version_from_debian_upstream(
+        ... "1.1.8+dfsg1")
+        ('1.1.8', None)
+        >>> DebianGitRepository._upstream_version_from_debian_upstream(
+        ... "1:5.5.0~dfsg")
+        ('5.5.0', None)
+        >>> DebianGitRepository._upstream_version_from_debian_upstream(
+        ... "0.0~git20160722.0.0cdb66a")
+        (None, '0cdb66a')
+        >>> DebianGitRepository._upstream_version_from_debian_upstream(
+        ... "3:6.04~git20190206.bf6db5b4+dfsg1")
+        (None, 'bf6db5b4')
+        >>> DebianGitRepository._upstream_version_from_debian_upstream(
+        ... "2.3+really2.2")
+        ('2.2', None)
+        >>> DebianGitRepository._upstream_version_from_debian_upstream(
+        ... "42~beta1")
+        ('42~beta1', None)
+        >>> DebianGitRepository._upstream_version_from_debian_upstream(
+        ... "4.99.4+dfsg+really4.10.0+py3")
+        ('4.10.0', None)
+        >>> DebianGitRepository._upstream_version_from_debian_upstream(
+        ... "5.4.1+really5.4.1~repack")
+        ('5.4.1', None)
+        >>> DebianGitRepository._upstream_version_from_debian_upstream(
+        ... "0.0~git20190103.40eba7e+really0.0~git20181023.b4e2780")
+        (None, 'b4e2780')
+        >>> DebianGitRepository._upstream_version_from_debian_upstream(
+        ... "1.1.0+really1.0.0+git20181028.94f6ae3")
+        (None, '94f6ae3')
+        >>> DebianGitRepository._upstream_version_from_debian_upstream(
+        ... "1.1.0")
+        ('1.1.0', None)
+        """
+
+        # If version starts with an epoch, remove it.
+        m = re.search(r'^[0-9]+:(.*)', version)
+        if m:
+            version = m.group(1)
+
+        # If version has "really", keep the version starting after "really".
+        m = re.search(r'really(.*)', version)
+        if m:
+            version = m.group(1)
+
+        # If version matches a git snapshot pattern, return the git revision.
+        m = re.search(r'[~+]git[0-9]{8}(\.[0-9]+)?\.([0-9a-f]+)', version)
+        if m:
+            return (None, m.group(2))
+
+        # Strip off common extensions starting with [+~] and return the rest.
+        return (re.split(r'[+~]({})'.format('|'.join(cls.splitexts)), version)[0], None)
+
     @staticmethod
     def _build_legacy_tag(format, version):
         """
@@ -154,7 +213,7 @@ class DebianGitRepository(PkgGitRepository):
 
         %(version%A%B)s provides %(version)s with string 'A' replaced by 'B'.
         This way, simple version mangling is possible via substitution.
-        Inside the substition string, '%' needs to be escaped. See the
+        Inside the substitution string, '%' needs to be escaped. See the
         examples below.
 
         >>> DebianGitRepository.version_to_tag("debian/%(version)s", "0:0~0")
@@ -210,8 +269,7 @@ class DebianGitRepository(PkgGitRepository):
     @staticmethod
     def _sanitize_version(version):
         """sanitize a version so git accepts it as a tag
-
-        as described in DEP14
+        as described in DEP-14
 
         >>> DebianGitRepository._sanitize_version("0.0.0")
         '0.0.0'
@@ -232,8 +290,7 @@ class DebianGitRepository(PkgGitRepository):
     @staticmethod
     def _unsanitize_version(tag):
         """Reverse _sanitize_version
-
-        as described in DEP14
+        as described in DEP-14
 
         >>> DebianGitRepository._unsanitize_version("1%0_bpo3")
         '1:0~bpo3'
@@ -288,7 +345,7 @@ class DebianGitRepository(PkgGitRepository):
         and (optional) component tarballs based on upstream_tree
 
         @param upstream_tree: the treeish in the git repo to create the commits against
-        @param soures: C{list} of tarball as I{UpstreamSource}. First one being the main
+        @param sources: C{list} of tarball as I{UpstreamSource}. First one being the main
                        tarball the other ones additional tarballs.
         """
         components = [t.component for t in sources[1:]]
@@ -352,7 +409,7 @@ class DebianGitRepository(PkgGitRepository):
         @type treeish: C{str}
         @param comp: compressor
         @type comp: L{Compressor}
-        @param with_submodules: wether to add submodules
+        @param with_submodules: whether to add submodules
         @type with_submodules: C{bool}
         @param component: component to add to tarball name
         @type component: C{str}
@@ -377,11 +434,13 @@ class DebianGitRepository(PkgGitRepository):
         """If linking to the upstream VCS get the commit id"""
         if not vcs_tag_format:
             return None
+        (version, revision) = self._upstream_version_from_debian_upstream(version)
         try:
-            tag = self.version_to_tag(vcs_tag_format, version)
-            return [self.rev_parse("%s^{}" % tag)]
+            if not revision:
+                revision = self.version_to_tag(vcs_tag_format, version)
+            return [self.rev_parse("%s^{}" % revision)]
         except GitRepositoryError:
-            raise GitRepositoryError("Can't find upstream vcs tag at '%s'" % tag)
+            raise GitRepositoryError("Can't find upstream vcs tag/revision at '%s'" % revision)
 
 
 # vim:et:ts=4:sw=4:et:sts=4:ai:set list listchars=tab\:»·,trail\:·:

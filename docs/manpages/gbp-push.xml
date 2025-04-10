@@ -14,8 +14,7 @@
   </refmeta>
   <refnamediv>
     <refname>gbp-push</refname>
-
-    <refpurpose>Push &debian; packaging changes to a &git; remote</refpurpose>
+    <refpurpose>Push to a remote &git; repository, aware of necessary packaging branch tracking</refpurpose>
   </refnamediv>
   <refsynopsisdiv>
     <cmdsynopsis>
@@ -82,7 +81,7 @@
     <para>
       If a <replaceable>remote</replaceable> is given on the command line
       the changes are pushed to the given remote repository. By
-      default it will push to the current branchs remote and fall
+      default it will push to the current branches remote and fall
       back to <emphasis>origin</emphasis>.
     </para>
   </refsect1>
@@ -95,7 +94,7 @@
         <listitem>
           <para>
 	    Don't fail if the &debian-branch; does not match the currently checked out
-	    branach and push the current branch instead.
+	    branch and push the current branch instead.
           </para>
         </listitem>
       </varlistentry>
@@ -114,7 +113,8 @@
 	  <para>
 	    Use this tag format when looking for tags corresponding to a &debian;
 	    version. Default is <replaceable>debian/%(version)s</replaceable>.
-	    If set to the empty value the tag will not be pushed.
+	    If set to the empty value the tag will not be pushed but gbp will
+	    push the tip of the &debian-branch;.
 	  </para>
 	</listitem>
       </varlistentry>

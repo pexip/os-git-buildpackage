@@ -22,6 +22,7 @@
 
       &man.common.options.synopsis;
       <arg><option>--upstream-tag=</option><replaceable>tag-format</replaceable></arg>
+      <arg><option>--upstream-signatures=</option>[auto|on|off]</arg>
       <arg rep='repeat'><option>--component=</option><replaceable>component</replaceable></arg>
       <group choice="plain">
         <arg><option>commit</option></arg>
@@ -34,12 +35,13 @@
   <refsect1>
     <title>DESCRIPTION</title>
     <para>
-      &gbp-pristine-tar; adds the pristine-tar commit for a given
-      upstream tarball to a &git; repository. This can be useful if a
-      original tarball has been already imported and the pristine-tar
-      commits should be added at a later time or if you're tracking
-      upstream git and want to create pristine-tar commits
-      nevertheless.
+      &gbp-pristine-tar; adds the pristine-tar commit for a given upstream
+      tarball to a &git; repository. This command is typically not invoked
+      manually, as creating new pristine-tar commits is done automatically by
+      e.g. &gbp-import-orig;. This command may howeer be useful if a original
+      tarball has been already imported and the pristine-tar commits should be
+      added at a later time or if you're tracking upstream git and want to
+      create pristine-tar commits nevertheless.
     </para>
   </refsect1>
   <refsect1>
@@ -53,6 +55,20 @@
           <para>
           use this tag format when tagging upstream versions,
           default is <replaceable>upstream/%(version)s</replaceable>
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term><option>--upstream-signatures=</option>[auto|on|off]</term>
+        <listitem>
+          <para>
+            Whether upstream signatures should be imported as well.
+            <emphasis>off</emphasis> turns this off completely while
+            <emphasis>on</emphasis> always tries to import a signature
+            (which can be useful if you want to fail if e.g. &uscan;
+            did not fetch a signature). The default
+            <emphasis>auto</emphasis> means to import a signature file
+            if present but do nothing otherwise.
           </para>
         </listitem>
       </varlistentry>

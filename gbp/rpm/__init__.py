@@ -301,7 +301,7 @@ class SpecFile(object):
         # Rpm python doesn't support many of these, thus the explicit list
         if isinstance(tagvalue, int):
             tagvalue = str(tagvalue)
-        elif type(tagvalue) is list or tagname in self._listtags:
+        elif isinstance(tagvalue, list) or tagname in self._listtags:
             tagvalue = None
         elif not tagvalue:
             # Rpm python doesn't give the following, for reason or another
@@ -478,7 +478,7 @@ class SpecFile(object):
             tagvalue = header[getattr(librpm, 'RPMTAG_%s' % tagname.upper())]
         except AttributeError:
             tagvalue = None
-        tagvalue = None if type(tagvalue) is list else value
+        tagvalue = None if isinstance(tagvalue, list) else value
 
         # Try to guess the correct indentation from the previous or next tag
         indent_re = re.compile(r'^([a-z]+([0-9]+)?\s*:\s*)', flags=re.I)
@@ -618,7 +618,7 @@ class SpecFile(object):
         ignored = self.ignorepatches
         # Remove 'Patch:̈́' tags
         for tag in self._patches().values():
-            if not tag['num'] in ignored:
+            if tag['num'] not in ignored:
                 tag_prev = self._delete_tag('patch', tag['num'])
                 # Remove a preceding comment if it seems to originate from GBP
                 if re.match(r'^\s*#.*patch.*auto-generated',
@@ -627,7 +627,7 @@ class SpecFile(object):
 
         # Remove '%patch:' macros
         for macro in self._special_directives['patch']:
-            if not macro['id'] in ignored:
+            if macro['id'] not in ignored:
                 macro_prev = self._delete_special_macro('patch', macro['id'])
                 # Remove surrounding if-else
                 macro_next = macro_prev.next

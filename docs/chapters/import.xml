@@ -187,11 +187,11 @@ EOF
     <option>upstream-branch</option> if you never had the upstream sources
     as a single commit. Using &gbp-import-orig; on such repositories might lead
     to unexpected merge results.</para></warning>
-    <para>In order to fix this you can prepend the upstream sources as a
-    single commit to your tree using &git;'s <ulink
-    url="http://git.or.cz/gitwiki/GraftPoint">grafts</ulink>. Afterwards you
-    can simply create a branch as explained above and &gbp-import-orig; will
-    work as expected.</para>
+    <para>In order to fix this you can prepend the upstream sources as a single
+    commit to your tree using &git;'s  <ulink
+    url="https://archive.kernel.org/oldwiki/git.wiki.kernel.org/index.php/GraftPoint.html">
+    grafts</ulink>. Afterwards you can simply create a branch as explained above
+    and &gbp-import-orig; will work as expected.</para>
     <para>Alternatively, if you are only importing source from original tarballs
     (for instance when converting from a Subversion repository where the
     mergeWithUpstream was set for svn-buildpackage), you can create an empty
@@ -208,26 +208,30 @@ EOF
     </sect2>
     </sect1>
 
-    <sect1 id="gbp.import.fromscratch">
+  <sect1 id="gbp.import.fromscratch">
     <title>Starting a &debian; package from scratch</title>
     <para>
-    So far, we assumed you already have a &debian; package to start with, but
-    what if you want to start a new package? First, create an empty repository:
+      So far, we assumed you already have a &debian; package to start with, but
+      what if you want to start a new package? First, create an empty repository for
+      your new package. We assume you want to package a software called named
+      <replaceable>mypkg</replaceable>:
     </para>
 <programlisting>
-  <command>mkdir</command> package-0.1
-  <command>cd</command> package-0.1
-  <command>git init</command>
+ <command>git init</command> --initial-branch=debian/latest mypkg
+ <command>cd</command> mypkg
 </programlisting>
-    <para>Then, you import the upstream sources, branch off the
-    <option>upstream-branch</option> branch and add the &debian; files (e.g. via dh_make):
+    <para>
+      You can then import the upstream sources and add the &debian; files (e.g. via <command>dh_make</command>):
 <programlisting>
-  &gbp-import-orig; <option>-u</option> <replaceable>0.1</replaceable> <filename>../package-0.1.tar.gz</filename>
-  <command>dh_make</command>
+ &gbp-import-orig; <option>--pristine-tar</option> <option>--debian-branch</option>=<replaceable>debian/latest</replaceable> <option>--upstream-branch</option>=<replaceable>upstream/latest</replaceable> <filename>https://example.com/releases/mypkg-0.1.tar.gz</filename>
+ <command>dh_make</command>
 </programlisting>
-    That's it, you're done. If you want to publish your new repository, you can use &gbp-create-remote-repo;.
+      &gbp; will create the needed branches, detect the upstream package name and version
+      automatically, ask for confirmation (unless you pass <option>--no-interactive</option>)
+      and create a git tag for the imported sources. If you don't want
+      to use <command>pristine-tar</command> you can just drop it from the above invocation.
     </para>
-    </sect1>
+  </sect1>
 
     <sect1 id="gbp.import.upstream-git">
     <title>When upstream uses Git</title>
@@ -341,11 +345,11 @@ upstream-tag = v%(version%.%_)s
 	  and the upstream repository, we name the upstream repository <replaceable>upstream</replaceable> instead of the
 	  default <replaceable>origin</replaceable>.
 <programlisting>
-  <command>git clone</command> --no-checkout -o upstream git://git.example.com/libgbp.git
+  <command>git clone</command> --no-checkout -o upstreamvcs git://git.example.com/libgbp.git
   <command>cd</command> libgbp
-  <command>git checkout</command> -b debian/sid v1.0
+  <command>git checkout</command> -b debian/latest v1.0
 </programlisting>
-	  The above makes sure we have <replaceable>debian/sid</replaceable> for the &debian; packaging. We didn't create
+	  The above makes sure we have <replaceable>debian/latest</replaceable> for the &debian; packaging. We didn't create
 	  any <replaceable>upstream/*</replaceable> branches; they're not needed for the packaging and only need to be
 	  kept up to date. We started the branch at the commit corresponding to the tag <replaceable>v1.0</replaceable>.
       </para>
@@ -353,14 +357,14 @@ upstream-tag = v%(version%.%_)s
       <para>After adding the &debian; packaging, we build the package. This assumes you're using &pristine-tar;
 	  and upstream uses a version number format as described above:
 <programlisting>
-  <command>gbp buildpackage</command> --git-pristine-tar --git-pristine-tar-commit --git-upstream-tag='v%(version)s' --git-debian-branch=debian/sid
+  <command>gbp buildpackage</command> --git-pristine-tar --git-pristine-tar-commit --git-upstream-tag='v%(version)s' --git-debian-branch=debian/latest
 </programlisting>
 	  When updating to a new upstream version, we simply fetch from upstream and merge in the new tag. Afterwards, we
 	  update the changelog and build the package:
 <programlisting>
   <command>git fetch</command> upstream
   <command>git merge</command> v1.1
-  <command>gbp dch</command> --debian-branch=debian/sid --snapshot --auto debian/
+  <command>gbp dch</command> --debian-branch=debian/latest --snapshot --auto debian/
   &gbp-buildpackage; --git-ignore-new --git-pristine-tar --git-pristine-tar-commit --git-upstream-tag='v%(version)s'
 </programlisting>
 	  Note that the above &gbp-dch; call makes sure we only pickup changes in the <filename>debian/</filename>
@@ -368,9 +372,9 @@ upstream-tag = v%(version%.%_)s
 	  we need to tell &gbp-buildpackage; that the working directory is unclean via the <option>--git-ignore-new</option> option.
 	  Once everything looks good, commit the changelog and build a release version:
 <programlisting>
-  <command>gbp dch</command> --release --auto --debian-branch=debian/sid
+  <command>gbp dch</command> --release --auto --debian-branch=debian/latest
   <command>git commit</command> -m"Release 1.1-1" debian/changelog
-  &gbp-buildpackage; --git-upstream-tag='v%(version)s' --git-debian-branch=debian/sid
+  &gbp-buildpackage; --git-upstream-tag='v%(version)s' --git-debian-branch=debian/latest
 </programlisting>
 	  If you want to share your repository with others, you can use &gbp-create-remote-repo; and &gbp-pull; as usual.
 	</para>
@@ -401,8 +405,8 @@ upstream-tag = v%(version%.%_)s
 	  a &git; repository with your packaging, change into that
 	  repository and do:
 <programlisting>
- &gitcmd; remote add upstream https://upstream.example.com/upstream.git
- &gitcmd; fetch upstream
+ &gitcmd; remote add upstreamvcs https://upstream.example.com/upstream.git
+ &gitcmd; fetch upstreamvcs
 </programlisting>
 	  This will pull in upstream's &git; history into your repo but since
 	  your packaging commits and upstreams commits have no common
@@ -436,11 +440,21 @@ upstream-tag = v%(version%.%_)s
       <variablelist>
 	<varlistentry>
 	  <term>
+	    debian/latest
+	  </term>
+	  <listitem>
+	    <para>
+	      the latest &debian; packaging
+	    </para>
+	  </listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>
 	    debian/&lt;release&gt;
 	  </term>
 	  <listitem>
 	    <para>
-	      the &debian; packaging for a release <emphasis>jessie</emphasis>,
+	      the &debian; packaging for a specific release or suite like <emphasis>jessie</emphasis>,
 	      <emphasis>stretch</emphasis>, <emphasis>sid</emphasis>, <emphasis>jessie</emphasis>, <emphasis>jessie-backports</emphasis>, <emphasis>jessie-security</emphasis>
 	      or <emphasis>experimental</emphasis>.
 	    </para>
@@ -452,7 +466,7 @@ upstream-tag = v%(version%.%_)s
 	  </term>
 	  <listitem>
 	    <para>
-	      the latest upstream sources.
+	      the latest upstream release sources.
 	    </para>
 	  </listitem>
 	</varlistentry>
@@ -472,6 +486,21 @@ upstream-tag = v%(version%.%_)s
 	In case &pristine-tar; is being used, there will be a single <emphasis>pristine-tar</emphasis>
 	branch that keeps all binary deltas.
       </para>
+      <para>
+        Note that the <emphasis>upstream/latest</emphasis> branch is to contain
+        the upstream source code as it was at the time of the upstream release,
+        which was imported into Debian packaging. The
+        <emphasis>upstream/latest</emphasis> ref is not intended to point to the
+        tip of upstream's development branch.
+      </para>
+      <tip><para>
+      Using upstream tarballs is recommended as it allows signature verification
+      of the tarballs. If upstream uses git and tags their releases, it is recommended to
+      also use &gbp-import-orig;'s <option>--upstream-vcs-tag</option> to have a
+      fully traceable path from upstream git tag, to tarball contents, to what
+      was imported into Debian. As this brings the upstream development history into the
+      packaging repository it also makes cherry picking upstream commits simple.
+      </para></tip>
     </sect1>
 </chapter>
 

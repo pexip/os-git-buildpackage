@@ -9,52 +9,43 @@ Build-Depends:
  dh-sequence-bash-completion,
  dh-sequence-python3,
  docbook2x,
- flake8,
  gtk-doc-tools,
  libdistro-info-perl,
  perl,
  pydoctor,
  python3,
- python3-coverage,
- python3-dateutil,
- python3-filelock,
- python3-mock,
- python3-nose,
- python3-nosexcover,
- python3-pkg-resources,
- python3-rpm,
  python3-setuptools,
- python3-yaml,
  xsltproc,
 # For the testsuite
  bzip2 <!nocheck>,
  cpio <!nocheck>,
  devscripts (>= 2.17.7~) <!nocheck>,
- git (>= 1:1.7.9.1-1~) <!nocheck>,
+ git (>= 1:2.40.1) <!nocheck>,
  pristine-tar (>= 1.14) <!nocheck>,
+ python3-dateutil <!nocheck>,
+ python3-pytest <!nocheck>,
+ python3-pytest-cov <!nocheck>,
+ python3-rpm <!nocheck>,
+ python3-yaml <!nocheck>,
  rpm (>= 4.16.1) <!nocheck>,
  unzip <!nocheck>,
  zipmerge <!nocheck>,
-# For the network tests
- curl <!nocheck>,
- python3-requests <!nocheck>,
 Standards-Version: 4.6.1
-Vcs-Git: https://git.sigxcpu.org/cgit/git-buildpackage/
-Vcs-Browser: https://git.sigxcpu.org/cgit/git-buildpackage/
+Vcs-Git: https://salsa.debian.org/agx/git-buildpackage.git
+Vcs-Browser: https://salsa.debian.org/agx/git-buildpackage/
 Homepage: https://honk.sigxcpu.org/piki/projects/git-buildpackage/
 Rules-Requires-Root: no
-X-Python3-Version: >= 3.7
+X-Python3-Version: >= 3.12
 
 Package: git-buildpackage
 Architecture: all
 Depends: ${python3:Depends},
  ${shlibs:Depends},
  ${misc:Depends},
- devscripts (>= 2.13.5~),
- git (>= 1:1.7.9.1-1~),
+ devscripts (>= 2.25.2~),
+ git (>= 1:2.40.1-1),
  man-db,
  python3-dateutil,
- python3-pkg-resources,
  python3-yaml,
  sensible-utils,
 Recommends: pristine-tar (>= 1.41),
@@ -88,7 +79,7 @@ Depends: ${python3:Depends},
  python3-rpm (>= 4.16.1),
  rpm (>= 4.16.1),
 Recommends: pristine-tar (>= 0.5)
-Suggests: python3-notify, unzip, zipmerge, mock
+Suggests: python3-notify2, unzip, zipmerge, mock
 Description: Suite to help with RPM packages in Git repositories
  This package contains the following tools:
   * gbp buildpackage-rpm: build a package out of a Git repository, check for

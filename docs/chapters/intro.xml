@@ -2,19 +2,21 @@
     <title>Introduction</title>
     <para>
       Welcome to git-buildpackage (short &gbp;), a system that integrates the
-      <ulink url="http://www.debian.org/">Debian</ulink> package build
-      system with <ulink url="http://git.or.cz/">Git</ulink>. The most
-      recent version of this manual can be found &manual;.
+      <ulink url="https://www.debian.org/">Debian</ulink> package build
+      system with <ulink url="https://git-scm.com/doc">Git</ulink>. The most
+      recent version of this manual can be found at &manual;.
     </para>
     <para>
       This is what &gbp; can do for you:
+    </para>
     <itemizedlist>
-      <listitem><para>Initially import an existing &debian; package into &git;</para></listitem>
+      <listitem><para>Import existing &debian; packages into &git;</para></listitem>
       <listitem><para>Incrementally import new versions of a Debian
       package into &git; e.g. for importing NMUs or to maintain
       downstream modifications</para></listitem>
-      <listitem><para>Import new upstream versions from tarballs with optionally filters applied</para></listitem>
-      <listitem><para>Recreate the upstream tarball from information stored in &git;</para></listitem>
+      <listitem><para>Import new upstream versions from tarballs or git tags, or both at the same time</para></listitem>
+      <listitem><para>Automatically apply debian/copyright filters for DFSG-clean imports</para></listitem>
+      <listitem><para>Recreate (bit-for-bit with pristine-tar) the upstream tarball from information stored in &git;</para></listitem>
       <listitem><para>Maintain a consistent branch and tag naming within a &git; repository, across
 	  repositories or across a team of developers</para></listitem>
       <listitem><para>Automatically sign generated tags</para></listitem>
@@ -27,11 +29,40 @@
       </listitem>
       <listitem><para>Integrate the build process with cowbuilder or other builders</para></listitem>
       <listitem><para>Export to a clean build area before building the package</para></listitem>
-      <listitem><para>Generate debian/changelog automatically</para></listitem>
-      <listitem><para>Manage your quilt patches when using 3.0 (quilt)
-	  source format</para></listitem>
+      <listitem><para>Generate <filename>debian/changelog</filename> automatically</para></listitem>
+      <listitem><para>Add, edit and rebase the <filename>debian/patche</filename> without having to use GNU Quilt</para></listitem>
+      <listitem>
+        <para>
+          Pull changes from remote repositories like
+          <ulink url="https://salsa.debian.org/">salsa.debian.org</ulink>
+        </para>
+      </listitem>
+      <listitem>
+        <para>
+          Publish changes to remote packaging repositories like
+          <ulink url="https://salsa.debian.org/">salsa.debian.org</ulink>
+        </para>
+      </listitem>
     </itemizedlist>
+   <para>
     All of this is (hopefully) being done without restricting the user to certain usage patterns.
+    </para>
+    <para>
+      Git-buildpackage utlizises among others
+      <ulink url="https://manpages.debian.org/unstable/devscripts/uscan.1.en.html">uscan</ulink>,
+      <ulink url="https://manpages.debian.org/unstable/pristine-tar/pristine-tar.1.en.html">pristine-tar</ulink>,
+      <ulink url="https://manpages.debian.org/unstable/devscripts/debchange.1.en.html">debchange</ulink>
+      and <ulink url="https://manpages.debian.org/unstable/devscripts/debuild.1.en.html">debuild</ulink>
+      (which in turn uses
+      <ulink url="https://manpages.debian.org/unstable/dpkg-dev/dpkg-buildpackage.1.en.html">dpkg-buildpackage</ulink>
+      and <ulink url="https://manpages.debian.org/unstable/lintian/lintian.1.en.html">lintian</ulink>).
+      Prior knowledge about these tools transfer easily to git-buildpackage as
+      for example the configuration options have the same names. However, people
+      learning Debian packaging do not need to know these tools as
+      git-buildpackage will by default use these tools correctly on behalf of
+      the user. Leveraging on these tools also means that git-buildpackage has
+      all the capabilities these tools have, and git-buildpackage is equally
+      compliant to all Debian policies as these tools are.
     </para>
 
 <sect1 id="gbp.repository">
@@ -46,17 +77,20 @@
 	line and config file options</para></footnote> is used:
 	</para>
 	<itemizedlist>
-	<listitem><para>The <option>debian-branch</option> (the default branch
-	name used in the &git; repository is <emphasis>master</emphasis>) holds
-	your current development work.  That's the branch you usually cut your
-	releases from and the default branch new upstream releases are merged
-	onto.</para></listitem>
+	<listitem><para>The <option>debian-branch</option> (the default branch name
+	used in the &git; repository is <emphasis>master</emphasis> and in DEP-14
+	<emphasis>debian/latest</emphasis>) holds your current development work.
+	That's the branch you usually cut your releases from and the default branch
+	new upstream releases are merged onto.</para></listitem>
 
-	<listitem><para> The <option>upstream-branch</option> (the default
-	branch name used in the &git; repository is
-	<emphasis>upstream</emphasis>) holds the upstream releases. This can
-	either be a branch you import to or a branch of an upstream &git; repository
-	you pull from.</para></listitem>
+	<listitem><para> The <option>upstream-branch</option> (the default branch name
+	used in the &git; repository is <emphasis>upstream</emphasis> and in DEP-14
+	<emphasis>upstream/latest</emphasis>) holds the upstream releases. Note that
+	this branch is to contain the upstream source code as it was at the time of
+	the upstream release, which was imported into Debian packaging. It is not
+	intended to point to the tip of the upstream development branch. The branch
+	contents is updated by extracting the upstream source tarball into it, or by
+	pulling from an upstream release tag.</para></listitem>
 
 	<listitem><para> The <option>pristine-tar branch</option> (the default
 	branch name used in the &git; repository is
@@ -69,7 +103,7 @@
 	Every patch-queue branch is related to a
 	<option>debian-branch</option>. If the <option>debian-branch</option> is called
 	<emphasis>master</emphasis>, the corresponding patch-queue branch is
-	called <emphasis>patch-queue/master</emphasis>. The patch-queue branch is 
+	called <emphasis>patch-queue/master</emphasis>. The patch-queue branch is
 	the &debian; branch plus the contents of
 	<emphasis>debian/patches</emphasis> applied. These branches are managed
 	with &gbp-pq;.
@@ -88,15 +122,23 @@
 	<option>upstream-branch</option>&mdash;it doesn't matter if these branches
 	are maintained with &gbp-import-orig; or not.</para>
         <para>
-        A recommended branch layout is described in <xref linkend="gbp.branch.naming"/>.
+        A flexible, recommended branch layout compatible with DEP-14 is
+        described in the section <xref linkend="gbp.branch.naming"/>.
         </para>
-
 	<para>Since &gbp-buildpackage; only works with local &git;-repositories,
-	you have to use <command>git push</command> in order to publish your
-	changes to remote repositories like <ulink
-	url="http://git.debian.org/">git.debian.org</ulink>; this can be
+	you have to use <command>git push</command> or <command>gbp
+        push</command>in order to publish your changes to remote repositories
+        like <ulink
+	url="https://salsa.debian.org/">salsa.debian.org</ulink>; this can be
 	automated with &gbp-buildpackage;'s <option>post-tag</option>
 	hook.</para>
+
+  <mediaobject>
+    <imageobject>
+      <imagedata fileref="images/dep-14-branch-examples.svg" format="SVG"/>
+    </imageobject>
+    <caption><para>Example of git history when DEP-14 is used.</para></caption>
+  </mediaobject>
 </sect1>
 
 <sect1 id="gbp.workflow">
