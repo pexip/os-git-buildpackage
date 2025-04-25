@@ -2,7 +2,7 @@
 
 """Test L{gbp.deb}"""
 
-from . import context  # noqa: 401
+from . import context  # noqa: F401
 from . import testutils
 
 import os
@@ -87,9 +87,9 @@ Files:
         for s in ['foo', 'bar', 'upper-CASE']:
             self.assertEqual(os.path.basename(dsc.additional_tarballs[s]),
                              'libvirt_0.9.12.orig-%s.tar.gz' % s)
-        self.assertEquals(sorted(dsc.sigs), ['/tmp/libvirt_0.9.12.orig-bar.tar.gz.asc',
-                                             '/tmp/libvirt_0.9.12.orig-foo.tar.gz.asc',
-                                             '/tmp/libvirt_0.9.12.orig.tar.gz.asc'])
+        self.assertEqual(sorted(dsc.sigs), ['/tmp/libvirt_0.9.12.orig-bar.tar.gz.asc',
+                                            '/tmp/libvirt_0.9.12.orig-foo.tar.gz.asc',
+                                            '/tmp/libvirt_0.9.12.orig.tar.gz.asc'])
 
 
 class Test10DscNonNativeFile(unittest.TestCase):
@@ -125,7 +125,7 @@ Files:
         os.unlink(self.dscfile.name)
 
     def test_dscfile_parse(self):
-        """Test parsing a a 1.0 non-native dsc file without debian revision"""
+        """Test parsing a 1.0 non-native dsc file without debian revision"""
         dsc = DscFile.parse(self.dscfile.name)
         self.assertEqual(dsc.version, '0.5')
         self.assertEqual(dsc.native, False)
@@ -133,7 +133,91 @@ Files:
         self.assertEqual(os.path.basename(dsc.deb_tgz), '')
         self.assertEqual(os.path.basename(dsc.diff), 'latencytop_0.5.diff.gz')
         self.assertEqual(dsc.additional_tarballs, {}),
-        self.assertEquals(dsc.sigs, [])
+        self.assertEqual(dsc.sigs, [])
+
+
+class Test10DscNativeFileWithDebianRevision(unittest.TestCase):
+    """Test L{gbp.deb.DscFile} with version string containing a Debian revision part"""
+
+    content = """Format: 1.0
+Source: python3-defaults
+Binary: python3, python3-venv, python3-minimal, python3-nopie, python3-examples, python3-dev, libpython
+3-dev, libpython3-stdlib, idle, python3-doc, python3-dbg, libpython3-dbg, python3-all, python3-all-dev,
+ python3-all-dbg, python3-all-venv, libpython3-all-dev, libpython3-all-dbg, 2to3, python3-full
+Architecture: any all
+Version: 3.12.4-1
+Maintainer: Matthias Klose <doko@debian.org>
+Uploaders: Piotr Ożarowski <piotr@debian.org>, Stefano Rivera <stefanor@debian.org>
+Homepage: https://www.python.org/
+Standards-Version: 4.6.2
+Vcs-Browser: https://salsa.debian.org/cpython-team/python3-defaults
+Vcs-Git: https://salsa.debian.org/cpython-team/python3-defaults.git
+Build-Depends: debhelper (>= 11), dpkg-dev (>= 1.17.11), python3.12:any (>= 3.12.4-1~), python3.12-minimal:any, python3-docutils <!nodoc>, python3-sphinx <!nodoc>, html2text (>= 2) <!nodoc>
+Package-List:
+ 2to3 deb python optional arch=all
+ idle deb python optional arch=all
+ libpython3-all-dbg deb debug optional arch=any
+ libpython3-all-dev deb libdevel optional arch=any
+ libpython3-dbg deb debug optional arch=any
+ libpython3-dev deb libdevel optional arch=any
+ libpython3-stdlib deb python optional arch=any
+ python3 deb python optional arch=any
+ python3-all deb python optional arch=any
+ python3-all-dbg deb debug optional arch=any
+ python3-all-dev deb python optional arch=any
+ python3-all-venv deb python optional arch=any
+ python3-dbg deb debug optional arch=any
+ python3-dev deb python optional arch=any
+ python3-doc deb doc optional arch=all
+ python3-examples deb python optional arch=all
+ python3-full deb python optional arch=any
+ python3-minimal deb python optional arch=any
+ python3-nopie deb python optional arch=any
+ python3-venv deb python optional arch=any
+Checksums-Sha1:
+ 2eed084fb55c6f903413b0c9cc876e2e31197133 146851 python3-defaults_3.12.4-1.tar.gz
+Checksums-Sha256:
+ 5ed419073282df22cddeb50a44b36f5607104d52999b93525dcd3970ea9a478f 146851 python3-defaults_3.12.4-1.tar.gz
+"""
+
+    def setUp(self):
+        with tempfile.NamedTemporaryFile(delete=False) as self.dscfile:
+            self.dscfile.write(self.content.encode())
+
+    def tearDown(self):
+        os.unlink(self.dscfile.name)
+
+    def test_dscfile_parse(self):
+        """Test parsing a 1.0 native dsc file with debian revision"""
+        dsc = DscFile.parse(self.dscfile.name)
+        self.assertEqual(dsc.version, '3.12.4-1')
+        self.assertEqual(dsc.native, True)
+        self.assertEqual(os.path.basename(dsc.tgz), 'python3-defaults_3.12.4-1.tar.gz')
+        self.assertEqual(os.path.basename(dsc.deb_tgz), '')
+        self.assertEqual(os.path.basename(dsc.diff), '')
+        self.assertEqual(dsc.additional_tarballs, {}),
+        self.assertEqual(dsc.sigs, [])
+
+
+class Test30DscFileNonUtf8(unittest.TestCase):
+    """Test L{gbp.deb.DscFile} with non-UTF8 dsc"""
+
+    content = """Format: 3.0 (quilt)
+Source: libvirt
+Uploaders: Guido Günther <agx@sigxcpu.org>, Laurent Léonard <laurent@open-minds.org>
+"""
+
+    def setUp(self):
+        with tempfile.NamedTemporaryFile(delete=False) as self.dscfile:
+            self.dscfile.write(self.content.encode('iso8859-1'))
+
+    def tearDown(self):
+        os.unlink(self.dscfile.name)
+
+    def test_dscfile_parse(self):
+        """Test parsing an invalid (non-UTF8) dsc file"""
+        with self.assertRaisesRegex(gbp.errors.GbpError, "is not UTF-8 encoded"):
+            DscFile.parse(self.dscfile.name)
 
 
 @testutils.skip_without_cmd('dpkg')
@@ -168,10 +252,10 @@ class TestDeb(unittest.TestCase):
     def test_get_arch(self):
         arch = gbp.deb.get_arch()
         self.assertTrue(isinstance(arch, str))
-        self.assertEquals(arch, "amd64")
+        self.assertEqual(arch, "amd64")
 
     @unittest.skipUnless(testutils.OsReleaseFile()['ID'] == 'debian', "not on Debian")
     def test_get_vendor(self):
         vendor = gbp.deb.get_vendor()
         self.assertTrue(isinstance(vendor, str))
-        self.assertEquals(vendor, "Debian")
+        self.assertEqual(vendor, "Debian")

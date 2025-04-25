@@ -19,7 +19,7 @@
 
 import errno
 import os
-import pipes
+import re
 import shutil
 import shlex
 import sys
@@ -199,10 +199,10 @@ def check_tag(options, repo, source):
 
 def get_pbuilder_dist(options, repo, native=False):
     """
-    Determin the dist to build for with pbuilder/cowbuilder
+    Determine the dist to build for with pbuilder/cowbuilder
     """
     dist = None
-    if options.pbuilder_dist == 'DEP14':
+    if options.pbuilder_dist == 'DEP-14' or options.pbuilder_dist == 'DEP14':
         vendor = du.get_vendor().lower()
         branch = repo.branch
         if not branch:
@@ -211,8 +211,12 @@ def get_pbuilder_dist(options, repo, native=False):
         parts = branch.rsplit('/')
         if len(parts) == 2:  # e.g. debian/stretch
             suite = parts[1]
+            # Strip numeral prefix if suite name has it
+            # e.g. '12-bookworm' or '24.04-noble'
+            suite = re.sub(r'^[0-9][0-9.]*-', '', suite)
             if vendor == parts[0]:
-                dist = '' if suite in ['sid', 'master', 'main', 'latest'] else suite
+                # Keep 'dist' empty for Debian unstable, otherwise populate it with 'suite'
+                dist = '' if suite in ['latest', 'master', 'main', 'sid'] else suite
             else:
                 dist = '%s_%s' % (parts[0], suite)
         # Branches in Debian often omit the debian/ prefix
@@ -223,7 +227,7 @@ def get_pbuilder_dist(options, repo, native=False):
                 dist = branch
 
         if dist is None:
-            raise GbpError("DEP14 DIST: Current branch '%s' does not match vendor/suite" % branch)
+            raise GbpError("DEP-14 DIST: Current branch '%s' does not match vendor/suite" % branch)
     else:
         dist = options.pbuilder_dist
     return dist
@@ -238,7 +242,7 @@ def setup_pbuilder(options, repo, native):
 
     *pbd_env* is used for the actual build command while *hook_env* is
     passed to all hooks. They both contain the same information but
-    *pbd_env* contains the depreated variable names not starting with
+    *pbd_env* contains the deprecated variable names not starting with
     *GBP_*.
     """
     pbd_env = {}
@@ -486,6 +490,7 @@ def main(argv):
     prefix = "git-"
     source = None
     hook_env = {}
+    export_dir = None
 
     options, gbp_args, dpkg_args = parse_args(argv, prefix)
 
@@ -570,7 +575,7 @@ def main(argv):
             # Finally build the package:
             gbp.log.info("Performing the build")
             RunAtCommand(options.builder,
-                         [pipes.quote(arg) for arg in dpkg_args],
+                         [shlex.quote(arg) for arg in dpkg_args],
                          shell=True,
                          extra_env=Hook.md(build_env,
                                            {'GBP_BUILD_DIR': build_dir})
@@ -602,7 +607,7 @@ def main(argv):
         drop_index(repo)
 
     if not options.tag_only:
-        if options.export_dir and options.purge and not retval:
+        if export_dir and options.purge:
             RemoveTree(export_dir)()
 
         if source:

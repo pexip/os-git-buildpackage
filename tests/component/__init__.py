@@ -24,10 +24,9 @@ import hashlib
 import os
 import shutil
 import tempfile
+import pytest
 import unittest
 from unittest import skipUnless
-from nose import SkipTest
-from nose.tools import eq_, ok_     # pylint: disable=E0611
 from .. testutils import GbpLogTester
 
 from gbp.git import GitRepository, GitRepositoryError
@@ -66,19 +65,19 @@ class ComponentTestGitRepository(GitRepository):
         try:
             repo = cls('.')
         except GitRepositoryError:
-            raise SkipTest("Skipping '%s', since this is not a git checkout."
-                           % __name__)
+            pytest.skip("Skipping '%s', since this is not a git checkout."
+                        % __name__)
 
         submodules = repo.submodule_status()
         try:
             status = submodules[data]
         except KeyError:
-            raise SkipTest("Skipping '%s', testdata directory not a known "
-                           "submodule." % __name__)
+            pytest.skip("Skipping '%s', testdata directory not a known "
+                        "submodule." % __name__)
 
         if status[0] == '-':
-            raise SkipTest("Skipping '%s', testdata directory not initialized. "
-                           "Consider doing 'git submodule update'" % __name__)
+            pytest.skip("Skipping '%s', testdata directory not initialized. "
+                        "Consider doing 'git submodule update'" % __name__)
 
     def ls_tree(self, treeish):
         """List contents (blobs) in a git treeish"""
@@ -174,7 +173,7 @@ class ComponentTestBase(unittest.TestCase, GbpLogTester):
         local_tags = repo.tags
         assert_msg = "Tags: expected %s, found %s" % (tags,
                                                       local_tags)
-        eq_(set(local_tags), set(tags), assert_msg)
+        assert set(local_tags) == set(tags), assert_msg
 
     @classmethod
     def _check_repo_state(cls, repo, current_branch, branches, files=None,
@@ -184,12 +183,12 @@ class ComponentTestBase(unittest.TestCase, GbpLogTester):
         and dirs exist
         """
         branch = repo.branch
-        eq_(branch, current_branch)
-        ok_(repo.is_clean())
+        assert branch == current_branch
+        assert repo.is_clean()
         local_branches = repo.get_local_branches()
         assert_msg = "Branches: expected %s, found %s" % (branches,
                                                           local_branches)
-        eq_(set(local_branches), set(branches), assert_msg)
+        assert set(local_branches) == set(branches), assert_msg
 
         if files is not None or dirs is not None:
             # Get files of the working copy recursively
@@ -213,7 +212,7 @@ class ComponentTestBase(unittest.TestCase, GbpLogTester):
             cls.check_tags(repo, tags)
         if clean:
             clean, files = repo.is_clean()
-            ok_(clean, "Repo has uncommitted files %s" % files)
+            assert clean, "Repo has uncommitted files %s" % files
 
     @classmethod
     def rem_refs(cls, repo, refs):
@@ -231,7 +230,7 @@ class ComponentTestBase(unittest.TestCase, GbpLogTester):
         """
         for (h, s) in rem:
             n = repo.rev_parse(h)
-            ok_(n == s, "Head '%s' points to %s' instead of '%s'" % (h, n, s))
+            assert n == s, "Head '%s' points to %s' instead of '%s'" % (h, n, s)
 
     @staticmethod
     def hash_file(filename):
@@ -257,10 +256,9 @@ class ComponentTestBase(unittest.TestCase, GbpLogTester):
                 k, v = var
             else:
                 k, v = var, None
-            ok_(k in parsed, "%s not found in %s" % (k, parsed))
+            assert k in parsed, "%s not found in %s" % (k, parsed)
             if v is not None:
-                ok_(v == parsed[k],
-                    "Got %s not expected value %s for %s" % (parsed[k], v, k))
+                assert v == parsed[k], "Got %s not expected value %s for %s" % (parsed[k], v, k)
 
     @staticmethod
     def add_file(repo, name, content=None):
@@ -268,3 +266,10 @@ class ComponentTestBase(unittest.TestCase, GbpLogTester):
             f.write(' ' or content)
         repo.add_files(name)
         repo.commit_files(name, 'New file %s' % name)
+
+    def _check_success(self, ret):
+        """
+        Check a commands exit status for success (0)
+        """
+        assert_msg = "Command failed with {}. Log output: {}".format(ret, "\n".join(self._get_log()))
+        assert ret == 0, assert_msg

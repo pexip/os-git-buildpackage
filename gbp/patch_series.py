@@ -275,7 +275,7 @@ class Dep3Patch(Patch):
 
     def _check_dep3(self):
         """
-        Read DEP3 patch information into a structured form
+        Read DEP-3 patch information into a structured form
         """
         if not os.path.exists(self.path):
             return
@@ -334,6 +334,7 @@ class PatchSeries(list):
 
         >>> PatchSeries._read_series(['a/b',
         ...                           'a -p1 # comment',
+        ...                           '',
         ...                           'a/b -p2'], '.')
         ... # doctest:+NORMALIZE_WHITESPACE
         [<gbp.patch_series.Patch path='./a/b' topic='a' >,
@@ -349,8 +350,11 @@ class PatchSeries(list):
         @type patch_dir: string
         """
         queue = PatchSeries()
+        ws = re.compile('^\\s+$')
         for line in series:
             try:
+                if ws.match(line):
+                    continue
                 if line[0] in ['\n', '#']:
                     continue
             except IndexError:

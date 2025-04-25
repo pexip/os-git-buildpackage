@@ -14,8 +14,7 @@
   </refmeta>
   <refnamediv>
     <refname>gbp-create-remote-repo</refname>
-
-    <refpurpose>Create remote repositories</refpurpose>
+    <refpurpose>Create a remote &git; repository</refpurpose>
   </refnamediv>
   <refsynopsisdiv>
     <cmdsynopsis>
@@ -133,7 +132,7 @@
         <term><option>--[no-]bare</option>
         </term>
         <listitem>
-	  <para>Whether to the remote repository should be a bare
+	  <para>Whether the remote repository should be a bare
 	  repository (this is the default).</para>
         </listitem>
       </varlistentry>

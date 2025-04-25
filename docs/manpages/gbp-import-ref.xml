@@ -14,7 +14,7 @@
   </refmeta>
   <refnamediv>
     <refname>gbp-import-ref</refname>
-    <refpurpose>Update upstream sources when using &git; only</refpurpose>
+    <refpurpose>Update upstream sources in a git only workflow</refpurpose>
   </refnamediv>
   <refsynopsisdiv>
     <cmdsynopsis>
@@ -216,7 +216,7 @@
     <screen>
     &gbp-import-ref; --upstream-tree=BRANCH -u0.0~git20180524</screen>
     <para>
-      Merge commits from the the tag corresponding to version <replaceable>1.0</replaceable>:
+      Merge commits from the tag corresponding to version <replaceable>1.0</replaceable>:
     </para>
     <screen>
     &gbp-import-ref; --upstream-tree=VERSION -u1.0</screen>

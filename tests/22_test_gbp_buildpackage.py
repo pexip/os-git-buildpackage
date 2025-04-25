@@ -6,7 +6,7 @@ from gbp.scripts.buildpackage import (get_pbuilder_dist,
                                       GbpError)
 from . testutils import DebianGitTestRepo
 
-from mock import patch
+from unittest.mock import patch
 
 
 class TestGbpBuildpackageDep14(DebianGitTestRepo):
@@ -17,13 +17,21 @@ class TestGbpBuildpackageDep14(DebianGitTestRepo):
         DebianGitTestRepo.setUp(self)
         self.add_file('doesnotmatter')
         self.options = self.Options()
-        self.options.pbuilder_dist = 'DEP14'
+        self.options.pbuilder_dist = 'DEP-14'
 
     @patch('gbp.deb.get_vendor', return_value='Debian')
     def test_get_pbuilder_dist_no_dep14(self, patch):
         self.options.pbuilder_dist = 'notdep14'
         self.assertEqual(get_pbuilder_dist(self.options, self.repo),
                          self.options.pbuilder_dist)
+
+    @patch('gbp.deb.get_vendor', return_value='Debian')
+    def test_get_pbuilder_dist_dep14_debian_latest(self, patch):
+        branch = 'debian/latest'
+        self.repo.create_branch(branch)
+        self.repo.set_branch(branch)
+        self.assertEqual(get_pbuilder_dist(self.options, self.repo), '')
+        patch.assert_called_once_with()
 
     @patch('gbp.deb.get_vendor', return_value='Debian')
     def test_get_pbuilder_dist_dep14_debian_sid(self, patch):
@@ -47,6 +55,14 @@ class TestGbpBuildpackageDep14(DebianGitTestRepo):
         self.repo.create_branch(branch)
         self.repo.set_branch(branch)
         self.assertEqual(get_pbuilder_dist(self.options, self.repo), 'squeeze-lts')
+        patch.assert_called_once_with()
+
+    @patch('gbp.deb.get_vendor', return_value='Debian')
+    def test_get_pbuilder_dist_dep14_debian_12_bookworm(self, patch):
+        branch = 'debian/12-bookworm'
+        self.repo.create_branch(branch)
+        self.repo.set_branch(branch)
+        self.assertEqual(get_pbuilder_dist(self.options, self.repo), 'bookworm')
         patch.assert_called_once_with()
 
     @patch('gbp.deb.get_vendor', return_value='Debian')
@@ -88,8 +104,8 @@ class TestGbpBuildpackageDep14(DebianGitTestRepo):
         branch = 'too/many/slashes'
         self.repo.create_branch(branch)
         self.repo.set_branch(branch)
-        with self.assertRaisesRegexp(GbpError,
-                                     "DEP14 DIST: Current branch 'too/many/slashes' does not match vendor/suite"):
+        with self.assertRaisesRegex(GbpError,
+                                    "DEP-14 DIST: Current branch 'too/many/slashes' does not match vendor/suite"):
             get_pbuilder_dist(self.options, self.repo)
 
 

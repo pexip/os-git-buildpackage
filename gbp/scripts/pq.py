@@ -112,7 +112,7 @@ def generate_patches(repo, start, end, outdir, options):
 
 def compare_series(old, new):
     """
-    Compare new pathes to lists of patches already exported
+    Compare new paths to lists of patches already exported
 
     >>> compare_series(['# comment', 'a', 'b'], ['b', 'c'])
     (['c'], ['a'])
@@ -151,7 +151,7 @@ def format_series_diff(added, removed, options):
 
 def commit_patches(repo, branch, patches, options, patch_dir):
     """
-    Commit chanages exported from patch queue
+    Commit changes exported from patch queue
     """
     clean, dummy = repo.is_clean()
     if clean:
@@ -190,7 +190,7 @@ def find_upstream_commit(repo, branch, upstream_tag):
 
 
 def pq_on_upstream_tag(pq_from):
-    """Return True if the patch queue is based on the uptream tag,
+    """Return True if the patch queue is based on the upstream tag,
     False if its based on the debian packaging branch"""
     return True if pq_from.upper() == 'TAG' else False
 
@@ -333,7 +333,7 @@ def import_quilt_patches(repo, branch, series, tries, force, pq_from,
             try:
                 name = os.path.basename(patch.path)
                 apply_and_commit_patch(repo, patch, maintainer, patch.topic, name)
-            except (GbpError, GitRepositoryError) as e:
+            except Exception as e:
                 gbp.log.err("Failed to apply '%s': %s" % (patch.path, e))
                 repo.force_head('HEAD', hard=True)
                 repo.set_branch(branch)

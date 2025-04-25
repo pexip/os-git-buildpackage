@@ -244,7 +244,7 @@ class ChangeLog(object):
         @type email: C{str}
         @param newversion: start a new version
         @type newversion: C{bool}
-        @param version: the verion to use
+        @param version: the version to use
         @type version: C{str}
         @param release: finalize changelog for releaze
         @type release: C{bool}
@@ -285,7 +285,7 @@ class ChangeLog(object):
             args.append('[[[insert-git-dch-commit-message-here]]]')
         else:
             args.append('')
-        dch = Command('debchange', args, extra_env=env, capture_stderr=True)
+        dch = Command('debchange', args, extra_env=env, capture_stderr=False)
         dch.run_error = Command._f("Dch failed: {stderr_or_reason}")
         dch([], quiet=True)
         if msg:
